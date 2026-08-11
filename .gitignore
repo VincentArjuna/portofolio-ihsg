@@ -1,0 +1,38 @@
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/vendor/
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Node / React
+node_modules/
+dist/
+build/
+.next/
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
