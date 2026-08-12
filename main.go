@@ -31,7 +31,7 @@ func initDB(path string) *gorm.DB {
 	if err != nil {
 		log.Fatalf("gagal membuka database: %v", err)
 	}
-	if err := db.AutoMigrate(&Position{}); err != nil {
+	if err := db.AutoMigrate(&Position{}, &MarketData{}); err != nil {
 		log.Fatalf("gagal migrasi: %v", err)
 	}
 	return db
@@ -51,6 +51,7 @@ func main() {
 	api.Post("/portfolio", createPosition(db))
 	api.Put("/portfolio/:id", updatePosition(db))
 	api.Delete("/portfolio/:id", deletePosition(db))
+	api.Post("/market-data/refresh", refreshMarketData(db))
 
 	// Serve the Next.js static export (single-process monolith).
 	// ponytail: if WEB_DIR is absent (e.g. bare `go run` without frontend

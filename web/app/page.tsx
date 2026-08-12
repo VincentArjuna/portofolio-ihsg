@@ -5,11 +5,13 @@ import {
   createPosition,
   deletePosition,
   fetchPortfolio,
+  refreshMarketData,
   updatePosition,
   type Portfolio,
   type Position,
   type PositionInput,
 } from "@/lib/api";
+import { isStale } from "@/lib/format";
 import KpiCards from "@/components/KpiCards";
 import HoldingsTable from "@/components/HoldingsTable";
 import PositionModal from "@/components/PositionModal";
@@ -20,6 +22,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Position | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -32,6 +35,21 @@ export default function Page() {
       setLoading(false);
     }
   }, []);
+
+  // Market-data refresh: pull delayed quotes for held tickers, then reload
+  // portfolio so P&L reflects the new prices.
+  const refreshMarket = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await refreshMarketData();
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal memperbarui data pasar");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   useEffect(() => {
     refresh();
@@ -78,14 +96,33 @@ export default function Page() {
             Pantau kepemilikan saham dan alokasi modal Anda
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
-        >
-          + Tambah Posisi
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={refreshMarket}
+            disabled={refreshing || positions.length === 0}
+            className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {refreshing ? "Memperbarui..." : "Perbarui Data"}
+          </button>
+          <button
+            type="button"
+            onClick={openAdd}
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
+          >
+            + Tambah Posisi
+          </button>
+        </div>
       </header>
+
+      {/* Stale-data banner */}
+      {data?.summary.last_market_update &&
+        isStale(data.summary.last_market_update) && (
+          <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+            Data pasar sudah basi — tekan “Perbarui Data” untuk memuat harga
+            terbaru.
+          </div>
+        )}
 
       {/* KPI cards */}
       {data && (
@@ -125,8 +162,8 @@ export default function Page() {
 
       {/* Disagreement / data-freshness footnote */}
       <p className="mt-4 text-xs text-muted">
-        Data verdict (Aturan vs AI), harga kini, dan P&amp;L akan hadir setelah
-        integrasi data pasar di T2.
+        Harga kini dan P&amp;L memakai data tertunda (delayed) dari Yahoo
+        Finance. Data verdict (Aturan vs AI) hadir di T3.
       </p>
 
       <PositionModal

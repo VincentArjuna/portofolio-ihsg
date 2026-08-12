@@ -28,6 +28,7 @@ out/
 # Local runtime artifacts
 /data/
 /portofolio
+/portofolio-ihsg
 
 # OS
 .DS_Store

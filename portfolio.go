@@ -97,7 +97,9 @@ func validatePositionInput(ticker string, shares int, avg float64, date string) 
 	return t, nil
 }
 
-// GET /api/v1/portfolio — summary (cost basis) + positions with allocation %.
+// GET /api/v1/portfolio — summary (cost basis + live P&L) + positions with
+// allocation %. When MarketData exists for a ticker, current price/value/P&L
+// are populated; otherwise those fields stay nil (data not yet refreshed).
 func listPortfolio(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var positions []Position
@@ -105,35 +107,92 @@ func listPortfolio(db *gorm.DB) fiber.Handler {
 			return c.Status(500).JSON(fiber.Map{"error": "gagal memuat portofolio"})
 		}
 
-		total := 0.0
+		// Index market data by ticker for O(1) lookup per position.
+		var mdRows []MarketData
+		if err := db.Find(&mdRows).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "gagal memuat data pasar"})
+		}
+		market := make(map[string]MarketData, len(mdRows))
+		var lastUpdate time.Time
+		for _, m := range mdRows {
+			market[m.Ticker] = m
+			if m.UpdatedAt.After(lastUpdate) {
+				lastUpdate = m.UpdatedAt
+			}
+		}
+
+		totalCost, totalValue := 0.0, 0.0
+		hasMarketData := false
 		for _, p := range positions {
-			total += float64(p.Shares) * p.AvgBuyPrice
+			totalCost += float64(p.Shares) * p.AvgBuyPrice
+			if md, ok := market[p.Ticker]; ok && md.LastPrice > 0 {
+				totalValue += float64(p.Shares) * md.LastPrice
+				hasMarketData = true
+			}
+		}
+		// Allocation denominator = current value when any market data exists,
+		// else cost basis (per docs/api-contract.md weight_pct semantics).
+		allocDenom := totalCost
+		if hasMarketData && totalValue > 0 {
+			allocDenom = totalValue
 		}
 
 		items := make([]positionResponse, 0, len(positions))
 		for _, p := range positions {
 			cost := float64(p.Shares) * p.AvgBuyPrice
 			weight := 0.0
-			if total > 0 {
-				weight = cost / total * 100
+			if allocDenom > 0 {
+				weight = valueOrCost(p, market) / allocDenom * 100
 			}
-			items = append(items, positionResponse{
+			pr := positionResponse{
 				ID:          p.ID,
 				Ticker:      p.Ticker,
 				Shares:      p.Shares,
 				AvgBuyPrice: p.AvgBuyPrice,
 				BuyDate:     p.BuyDate,
 				WeightPct:   weight,
-				// CurrentPrice / Value / P&L / Verdicts stay nil → placeholders until T2.
-			})
+			}
+			if md, ok := market[p.Ticker]; ok && md.LastPrice > 0 {
+				value := float64(p.Shares) * md.LastPrice
+				pr.CurrentPrice = ptr(md.LastPrice)
+				pr.CurrentValueIDR = ptr(value)
+				pl := value - cost
+				pr.ProfitLossIDR = ptr(pl)
+				if cost > 0 {
+					pr.ProfitLossPct = ptr((md.LastPrice/p.AvgBuyPrice - 1) * 100)
+				}
+			}
+			items = append(items, pr)
 		}
 
-		return c.JSON(portfolioResponse{
-			Summary:   summaryResponse{TotalInvestmentIDR: total},
+		resp := portfolioResponse{
+			Summary:   summaryResponse{TotalInvestmentIDR: totalCost},
 			Positions: items,
-		})
+		}
+		if hasMarketData {
+			resp.Summary.CurrentValueIDR = ptr(totalValue)
+			resp.Summary.TotalProfitLossIDR = ptr(totalValue - totalCost)
+			if totalCost > 0 {
+				resp.Summary.TotalProfitLossPct = ptr((totalValue/totalCost - 1) * 100)
+			}
+			if !lastUpdate.IsZero() {
+				s := lastUpdate.UTC().Format(time.RFC3339)
+				resp.Summary.LastMarketUpdate = &s
+			}
+		}
+		return c.JSON(resp)
 	}
 }
+
+// valueOrCost returns the live market value when data exists, else cost basis.
+func valueOrCost(p Position, market map[string]MarketData) float64 {
+	if md, ok := market[p.Ticker]; ok && md.LastPrice > 0 {
+		return float64(p.Shares) * md.LastPrice
+	}
+	return float64(p.Shares) * p.AvgBuyPrice
+}
+
+func ptr[T any](v T) *T { return &v }
 
 // POST /api/v1/portfolio
 func createPosition(db *gorm.DB) fiber.Handler {

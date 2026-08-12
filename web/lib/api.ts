@@ -33,6 +33,12 @@ export interface Portfolio {
   positions: Position[];
 }
 
+export interface RefreshResult {
+  refreshed_count: number;
+  updated_at: string;
+  failed: number;
+}
+
 export interface PositionInput {
   ticker: string;
   shares: number;
@@ -60,6 +66,11 @@ async function asJson<T>(r: Response): Promise<T> {
 
 export const fetchPortfolio = () =>
   fetch(`${BASE}/portfolio`).then(asJson<Portfolio>);
+
+export const refreshMarketData = () =>
+  fetch(`${BASE}/market-data/refresh`, { method: "POST" }).then(
+    asJson<RefreshResult>,
+  );
 
 export const createPosition = (input: PositionInput) =>
   fetch(`${BASE}/portfolio`, {

@@ -1,5 +1,5 @@
 import type { Summary } from "@/lib/api";
-import { formatIDR, formatPct } from "@/lib/format";
+import { formatDateTime, formatIDR, formatPct, isStale } from "@/lib/format";
 
 interface Props {
   summary: Summary;
@@ -43,6 +43,7 @@ export default function KpiCards({ summary, positionCount }: Props) {
   const pl = summary.total_profit_loss_idr;
   const plTone: Tone =
     pl === null ? "muted" : pl > 0 ? "success" : pl < 0 ? "danger" : "ink";
+  const stale = isStale(summary.last_market_update);
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -54,7 +55,7 @@ export default function KpiCards({ summary, positionCount }: Props) {
       <Card
         label="Nilai Portofolio"
         value={summary.current_value_idr === null ? "—" : formatIDR(summary.current_value_idr)}
-        sub="menunggu data pasar (T2)"
+        sub={summary.current_value_idr === null ? "belum ada data harga" : "nilai pasar kini"}
         tone={summary.current_value_idr === null ? "muted" : "accent"}
       />
       <Card
@@ -62,16 +63,32 @@ export default function KpiCards({ summary, positionCount }: Props) {
         value={pl === null ? "—" : formatIDR(pl)}
         sub={
           summary.total_profit_loss_pct === null
-            ? "menunggu data pasar (T2)"
+            ? "belum ada data harga"
             : formatPct(summary.total_profit_loss_pct)
         }
         tone={plTone}
       />
       <Card
         label="Status Data Pasar"
-        value="Belum tersedia"
-        sub="Refresh otomatis hadir di T2"
-        tone="muted"
+        value={
+          summary.last_market_update === null
+            ? "Belum ada"
+            : stale
+              ? "Data basi"
+              : "Segar"
+        }
+        sub={
+          summary.last_market_update === null
+            ? "tekan Perbarui Data"
+            : formatDateTime(summary.last_market_update)
+        }
+        tone={
+          summary.last_market_update === null
+            ? "muted"
+            : stale
+              ? "warning"
+              : "success"
+        }
       />
     </div>
   );
