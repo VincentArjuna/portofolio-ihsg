@@ -46,6 +46,16 @@ export interface PositionInput {
   buy_date: string;
 }
 
+export interface Settings {
+  background_refresh_enabled: boolean;
+  refresh_interval_hours: number;
+  last_background_refresh: string | null;
+}
+
+export type SettingsInput = Partial<
+  Pick<Settings, "background_refresh_enabled" | "refresh_interval_hours">
+>;
+
 const BASE = "/api/v1";
 
 async function asJson<T>(r: Response): Promise<T> {
@@ -90,3 +100,13 @@ export const deletePosition = (id: string) =>
   fetch(`${BASE}/portfolio/${id}`, { method: "DELETE" }).then((r) => {
     if (!r.ok && r.status !== 204) throw new Error(`gagal menghapus (${r.status})`);
   });
+
+export const fetchSettings = () =>
+  fetch(`${BASE}/settings`).then(asJson<Settings>);
+
+export const saveSettings = (input: SettingsInput) =>
+  fetch(`${BASE}/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  }).then(asJson<Settings>);

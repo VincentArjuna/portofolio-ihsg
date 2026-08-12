@@ -15,6 +15,7 @@ import { isStale } from "@/lib/format";
 import KpiCards from "@/components/KpiCards";
 import HoldingsTable from "@/components/HoldingsTable";
 import PositionModal from "@/components/PositionModal";
+import SettingsPanel from "@/components/SettingsPanel";
 
 export default function Page() {
   const [data, setData] = useState<Portfolio | null>(null);
@@ -23,6 +24,7 @@ export default function Page() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Position | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -99,6 +101,13 @@ export default function Page() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+          >
+            Pengaturan
+          </button>
+          <button
+            type="button"
             onClick={refreshMarket}
             disabled={refreshing || positions.length === 0}
             className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
@@ -172,6 +181,8 @@ export default function Page() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   );
 }
