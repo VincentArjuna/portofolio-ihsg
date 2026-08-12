@@ -282,6 +282,46 @@ func fetchMarketData(ticker string) (MarketData, error) {
 	return md, nil
 }
 
+// --- Refresh core (shared by manual handler + background scheduler) ---
+
+// runRefresh fetches + stores market data for every held ticker, deduping by
+// ticker. A single ticker failure is logged and skipped; it never aborts the
+// batch. err is non-nil only when the portfolio read itself fails (callers
+// surface that as 500 / retry-next-slot). lastUpdate is the newest UpdatedAt
+// stored, or zero when nothing refreshed.
+func runRefresh(db *gorm.DB) (refreshed, failed int, lastUpdate time.Time, err error) {
+	var positions []Position
+	if err = db.Find(&positions).Error; err != nil {
+		return 0, 0, time.Time{}, err
+	}
+
+	seen := make(map[string]struct{}, len(positions))
+	for _, p := range positions {
+		if _, dup := seen[p.Ticker]; dup {
+			continue
+		}
+		seen[p.Ticker] = struct{}{}
+
+		md, ferr := fetchMarketData(p.Ticker)
+		if ferr != nil {
+			log.Printf("refresh %s gagal: %v", p.Ticker, ferr)
+			failed++
+			continue
+		}
+		md.UpdatedAt = time.Now().UTC()
+		if serr := db.Save(&md).Error; serr != nil {
+			log.Printf("refresh %s simpan gagal: %v", p.Ticker, serr)
+			failed++
+			continue
+		}
+		if md.UpdatedAt.After(lastUpdate) {
+			lastUpdate = md.UpdatedAt
+		}
+		refreshed++
+	}
+	return refreshed, failed, lastUpdate, nil
+}
+
 // --- HTTP handler ---
 
 type refreshResponse struct {
@@ -294,38 +334,10 @@ type refreshResponse struct {
 // A single ticker failure is logged and skipped; it never aborts the batch.
 func refreshMarketData(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var positions []Position
-		if err := db.Find(&positions).Error; err != nil {
+		refreshed, failed, lastUpdate, err := runRefresh(db)
+		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "gagal membaca portofolio"})
 		}
-
-		seen := make(map[string]struct{}, len(positions))
-		refreshed, failed := 0, 0
-		var lastUpdate time.Time
-		for _, p := range positions {
-			if _, dup := seen[p.Ticker]; dup {
-				continue
-			}
-			seen[p.Ticker] = struct{}{}
-
-			md, err := fetchMarketData(p.Ticker)
-			if err != nil {
-				log.Printf("refresh %s gagal: %v", p.Ticker, err)
-				failed++
-				continue
-			}
-			md.UpdatedAt = time.Now().UTC()
-			if err := db.Save(&md).Error; err != nil {
-				log.Printf("refresh %s simpan gagal: %v", p.Ticker, err)
-				failed++
-				continue
-			}
-			if md.UpdatedAt.After(lastUpdate) {
-				lastUpdate = md.UpdatedAt
-			}
-			refreshed++
-		}
-
 		updated := ""
 		if !lastUpdate.IsZero() {
 			updated = lastUpdate.Format(time.RFC3339)
