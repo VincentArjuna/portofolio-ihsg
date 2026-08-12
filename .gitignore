@@ -19,9 +19,15 @@ node_modules/
 dist/
 build/
 .next/
+web/out/
+out/
 .env
 .env.local
 .env.*.local
+
+# Local runtime artifacts
+/data/
+/portofolio
 
 # OS
 .DS_Store
