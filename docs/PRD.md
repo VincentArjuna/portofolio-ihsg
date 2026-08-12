@@ -6,6 +6,7 @@ Personal single-user responsive web app to track manual Indonesian Stock Exchang
 
 ### Included (v1)
 - Single-user local responsive web application.
+- **Dockerized**: Multi-stage Dockerfile + `docker-compose.yml` for local execution.
 - Portfolio entry: Ticker (IHSG `.JK`), shares, average buy price, buy date.
 - Public data collection: Delayed prices (Yahoo Finance `.JK`) and financial statements/company metadata (IDX official endpoints/web data).
 - Automated daily background data refresh with toggle, plus on-demand "Refresh now".

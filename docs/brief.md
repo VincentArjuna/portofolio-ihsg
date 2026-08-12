@@ -11,7 +11,8 @@ A personal, local responsive web tool designed to track manually inputted Indone
 5. **Local & Simple**: Single repository, local background refresh, no external user accounts.
 
 ## Tech Stack Strategy
-- **Architecture**: Single repository (Monolith / unified app).
+- **Architecture**: Single repository (Monolith / unified app with Docker & Docker Compose).
+- **Containerization**: Multi-stage Dockerfile (Go + Next.js build) + `docker-compose.yml` for local execution. Host `hermes` binary mounted/accessed via volume or host networking for the AI bridge.
 - **Language**: Indonesian UI.
 - **Data Collection**: Public delayed web data (Yahoo Finance `.JK` + official IDX data endpoints).
 - **AI Integration**: Local Hermes CLI (`hermes chat -q`) invoked via background subprocess.
