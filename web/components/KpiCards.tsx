@@ -1,0 +1,78 @@
+import type { Summary } from "@/lib/api";
+import { formatIDR, formatPct } from "@/lib/format";
+
+interface Props {
+  summary: Summary;
+  positionCount: number;
+}
+
+type Tone = "ink" | "accent" | "success" | "warning" | "danger" | "muted";
+
+const toneText: Record<Tone, string> = {
+  ink: "text-ink",
+  accent: "text-accent",
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+  muted: "text-muted",
+};
+
+function Card({
+  label,
+  value,
+  sub,
+  tone = "ink",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: Tone;
+}) {
+  return (
+    <div className="rounded-lg border border-edge bg-surface p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
+        {label}
+      </p>
+      <p className={`tnum mt-2 text-2xl font-semibold ${toneText[tone]}`}>{value}</p>
+      {sub && <p className="tnum mt-1 text-xs text-muted">{sub}</p>}
+    </div>
+  );
+}
+
+export default function KpiCards({ summary, positionCount }: Props) {
+  const pl = summary.total_profit_loss_idr;
+  const plTone: Tone =
+    pl === null ? "muted" : pl > 0 ? "success" : pl < 0 ? "danger" : "ink";
+
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Card
+        label="Total Investasi"
+        value={formatIDR(summary.total_investment_idr)}
+        sub={`${positionCount} posisi saham`}
+      />
+      <Card
+        label="Nilai Portofolio"
+        value={summary.current_value_idr === null ? "—" : formatIDR(summary.current_value_idr)}
+        sub="menunggu data pasar (T2)"
+        tone={summary.current_value_idr === null ? "muted" : "accent"}
+      />
+      <Card
+        label="Total Gain/Loss"
+        value={pl === null ? "—" : formatIDR(pl)}
+        sub={
+          summary.total_profit_loss_pct === null
+            ? "menunggu data pasar (T2)"
+            : formatPct(summary.total_profit_loss_pct)
+        }
+        tone={plTone}
+      />
+      <Card
+        label="Status Data Pasar"
+        value="Belum tersedia"
+        sub="Refresh otomatis hadir di T2"
+        tone="muted"
+      />
+    </div>
+  );
+}

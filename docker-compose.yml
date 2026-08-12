@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    image: portofolio-ihsg
+    container_name: portofolio-ihsg
+    ports:
+      - "8080:8080"
+    volumes:
+      # SQLite database persists on the host across container rebuilds.
+      - ./data:/app/data
+      # ponytail: mount the host `hermes` binary here in T3 for the AI bridge:
+      #   - /usr/local/bin/hermes:/usr/local/bin/hermes:ro
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/portofolio.db
+      - WEB_DIR=/app/web/out
+    restart: unless-stopped
