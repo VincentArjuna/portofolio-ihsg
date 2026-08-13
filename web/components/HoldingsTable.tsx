@@ -1,5 +1,5 @@
 import type { Position } from "@/lib/api";
-import { formatIDR, formatNum, formatPct, orDash } from "@/lib/format";
+import { formatIDR, formatShares, formatPct, orDash } from "@/lib/format";
 import VerdictBadge from "@/components/VerdictBadge";
 
 interface Props {
@@ -96,7 +96,7 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete, on
                   <td className="px-4 py-3 font-semibold tracking-wide text-ink">
                     {p.ticker}
                   </td>
-                  <td className="tnum px-4 py-3 text-ink">{formatNum(p.shares)}</td>
+                  <td className="tnum px-4 py-3 text-ink">{formatShares(p.shares)}</td>
                   <td className="tnum px-4 py-3 text-ink">{formatIDR(p.avg_buy_price)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

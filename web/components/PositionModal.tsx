@@ -124,7 +124,8 @@ export default function PositionModal({ open, initial, onClose, onSubmit }: Prop
               </label>
               <input
                 type="number"
-                min={1}
+                min="0.0001"
+                step="0.0001"
                 value={form.shares === 0 ? "" : form.shares}
                 onChange={(e) => set("shares", Number(e.target.value))}
                 placeholder="1000"
@@ -137,7 +138,8 @@ export default function PositionModal({ open, initial, onClose, onSubmit }: Prop
               </label>
               <input
                 type="number"
-                min={1}
+                min="0.01"
+                step="0.01"
                 value={form.avg_buy_price === 0 ? "" : form.avg_buy_price}
                 onChange={(e) => set("avg_buy_price", Number(e.target.value))}
                 placeholder="6000"

@@ -16,7 +16,7 @@ import (
 type Position struct {
 	ID          string    `gorm:"primaryKey" json:"id"`
 	Ticker      string    `gorm:"not null" json:"ticker"`
-	Shares      int       `gorm:"not null" json:"shares"`
+	Shares      float64   `gorm:"not null" json:"shares"` // fractional shares (issue #16)
 	AvgBuyPrice float64   `gorm:"not null" json:"avg_buy_price"`
 	BuyDate     string    `gorm:"not null" json:"buy_date"` // YYYY-MM-DD
 	CreatedAt   time.Time `json:"created_at"`
@@ -27,7 +27,7 @@ type Position struct {
 
 type createPositionRequest struct {
 	Ticker      string  `json:"ticker"`
-	Shares      int     `json:"shares"`
+	Shares      float64 `json:"shares"`
 	AvgBuyPrice float64 `json:"avg_buy_price"`
 	BuyDate     string  `json:"buy_date"`
 }
@@ -35,7 +35,7 @@ type createPositionRequest struct {
 // Pointer fields → partial update (PUT). Only provided fields are changed.
 type updatePositionRequest struct {
 	Ticker      *string  `json:"ticker"`
-	Shares      *int     `json:"shares"`
+	Shares      *float64 `json:"shares"`
 	AvgBuyPrice *float64 `json:"avg_buy_price"`
 	BuyDate     *string  `json:"buy_date"`
 }
@@ -59,7 +59,7 @@ type verdictSet struct {
 type positionResponse struct {
 	ID              string   `json:"id"`
 	Ticker          string   `json:"ticker"`
-	Shares          int      `json:"shares"`
+	Shares          float64  `json:"shares"`
 	AvgBuyPrice     float64  `json:"avg_buy_price"`
 	BuyDate         string   `json:"buy_date"`
 	CurrentPrice    *float64 `json:"current_price"`     // null until T2
@@ -80,7 +80,7 @@ type portfolioResponse struct {
 
 // validatePositionInput checks the trust-boundary inputs. Returns the
 // normalized (uppercased, trimmed) ticker.
-func validatePositionInput(ticker string, shares int, avg float64, date string) (string, error) {
+func validatePositionInput(ticker string, shares float64, avg float64, date string) (string, error) {
 	t := strings.ToUpper(strings.TrimSpace(ticker))
 	if t == "" {
 		return "", errors.New("ticker wajib diisi")

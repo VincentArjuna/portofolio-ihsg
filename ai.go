@@ -39,7 +39,7 @@ var errHermesUnavailable = errors.New("hermes tidak tersedia")
 // --- Context built for Hermes (docs/architecture.md §4 shape) ---
 
 type aiPortfolioCtx struct {
-	Shares    int     `json:"shares"`
+	Shares    float64 `json:"shares"`
 	WeightPct float64 `json:"weight_pct"`
 }
 
@@ -87,7 +87,7 @@ func buildAIContext(db *gorm.DB, ticker string) (aiContext, error) {
 
 	var positions []Position
 	_ = db.Find(&positions).Error
-	totalCost, thisCost, shares := 0.0, 0.0, 0
+	totalCost, thisCost, shares := 0.0, 0.0, 0.0
 	for _, p := range positions {
 		c := float64(p.Shares) * p.AvgBuyPrice
 		totalCost += c
