@@ -37,11 +37,10 @@ func initDB(path string) *gorm.DB {
 	return db
 }
 
-func main() {
-	db := initDB(env("DB_PATH", "portofolio.db"))
-	seedOpportunities(db) // seed/maintain the LQ45/Kompas100 liquid universe (T5)
-	webDir := env("WEB_DIR", "./web/out")
-
+// setupApp wires the Fiber app: middleware + REST routes + static frontend.
+// Shared by main() (real server) and the E2E test (in-process app.Test). It
+// does NOT start the scheduler or the listener — callers own those.
+func setupApp(db *gorm.DB) *fiber.App {
 	app := fiber.New(fiber.Config{AppName: "Portofolio IHSG"})
 	app.Use(recover.New())
 	app.Use(logger.New())
@@ -61,14 +60,22 @@ func main() {
 	api.Get("/settings", getSettings(db))
 	api.Put("/settings", updateSettings(db))
 
-	startScheduler(db) // background refresh; no-ops when disabled
-
 	// Serve the Next.js static export (single-process monolith).
 	// ponytail: if WEB_DIR is absent (e.g. bare `go run` without frontend
 	// build), API still works; UI is served once Next.js is built.
+	webDir := env("WEB_DIR", "./web/out")
 	if _, err := os.Stat(webDir); err == nil {
 		app.Static("/", webDir, fiber.Static{Compress: true})
 	}
+	return app
+}
+
+func main() {
+	db := initDB(env("DB_PATH", "portofolio.db"))
+	seedOpportunities(db) // seed/maintain the LQ45/Kompas100 liquid universe (T5)
+
+	app := setupApp(db)
+	startScheduler(db) // background refresh; no-ops when disabled
 
 	port := env("PORT", "8080")
 	log.Printf("Portofolio IHSG mendengarkan di :%s (DB=%s)", port, env("DB_PATH", "portofolio.db"))

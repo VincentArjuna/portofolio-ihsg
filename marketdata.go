@@ -282,6 +282,11 @@ func fetchMarketData(ticker string) (MarketData, error) {
 	return md, nil
 }
 
+// fetchMarketDataFn is the market-data fetch seam. It defaults to the real
+// Yahoo fetcher; tests override it with a deterministic stub so the full
+// refresh → score → P&L pipeline can be exercised hermetically (no network).
+var fetchMarketDataFn = fetchMarketData
+
 // --- Refresh core (shared by manual handler + background scheduler + T5 universe) ---
 
 // refreshTickers fetches + stores market data and re-scores a deduped ticker
@@ -297,7 +302,7 @@ func refreshTickers(db *gorm.DB, tickers []string) (refreshed, failed int, lastU
 		}
 		seen[t] = struct{}{}
 
-		md, ferr := fetchMarketData(t)
+		md, ferr := fetchMarketDataFn(t)
 		if ferr != nil {
 			log.Printf("refresh %s gagal: %v", t, ferr)
 			failed++
