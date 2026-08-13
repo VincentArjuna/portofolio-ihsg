@@ -314,6 +314,8 @@ func runRefresh(db *gorm.DB) (refreshed, failed int, lastUpdate time.Time, err e
 			failed++
 			continue
 		}
+		// Re-score on every refresh so verdicts track the latest snapshot.
+		scoreAndPersist(db, md)
 		if md.UpdatedAt.After(lastUpdate) {
 			lastUpdate = md.UpdatedAt
 		}

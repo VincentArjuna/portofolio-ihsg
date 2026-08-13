@@ -1,11 +1,13 @@
 import type { Position } from "@/lib/api";
 import { formatIDR, formatNum, formatPct, orDash } from "@/lib/format";
+import VerdictBadge from "@/components/VerdictBadge";
 
 interface Props {
   positions: Position[];
   loading: boolean;
   onEdit: (p: Position) => void;
   onDelete: (p: Position) => void;
+  onDetail: (p: Position) => void;
 }
 
 const COLS = [
@@ -31,6 +33,26 @@ function Placeholder({ label = "menunggu data" }: { label?: string }) {
   );
 }
 
+// Verdict badge + an explicit "beda pendapat" marker when rule disagrees with
+// AI (docs/DESIGN.md signature element). AI is null until T4, so the marker is
+// dormant for now but wired for when AI verdicts arrive.
+function VerdictCell({ verdict, disagreement }: { verdict: string | null; disagreement?: boolean }) {
+  if (!verdict) return <Placeholder label="verdict hadir setelah data pasar dimuat" />;
+  return (
+    <div className="flex items-center gap-1.5">
+      <VerdictBadge verdict={verdict} />
+      {disagreement && (
+        <span
+          className="rounded bg-warning/15 px-1 py-0.5 text-[10px] font-semibold uppercase text-warning"
+          title="Aturan dan AI berbeda pendapat"
+        >
+          ⚠
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SkeletonRow() {
   return (
     <tr className="border-t border-edge">
@@ -43,7 +65,7 @@ function SkeletonRow() {
   );
 }
 
-export default function HoldingsTable({ positions, loading, onEdit, onDelete }: Props) {
+export default function HoldingsTable({ positions, loading, onEdit, onDelete, onDetail }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border border-edge">
       <table className="w-full min-w-[920px] border-collapse text-sm">
@@ -113,13 +135,20 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete }: 
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Placeholder label="verdict rule vs AI hadir di T2/T3" />
+                    <VerdictCell verdict={p.verdicts?.short_term.rule ?? null} disagreement={p.verdicts?.short_term.disagreement} />
                   </td>
                   <td className="px-4 py-3">
-                    <Placeholder label="verdict rule vs AI hadir di T2/T3" />
+                    <VerdictCell verdict={p.verdicts?.long_term.rule ?? null} disagreement={p.verdicts?.long_term.disagreement} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onDetail(p)}
+                        className="rounded-md border border-accent/50 px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+                      >
+                        Detail
+                      </button>
                       <button
                         type="button"
                         onClick={() => onEdit(p)}

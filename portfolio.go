@@ -121,6 +121,17 @@ func listPortfolio(db *gorm.DB) fiber.Handler {
 			}
 		}
 
+		// Index rule verdicts by ticker+horizon (T3).
+		type arKey struct{ ticker, horizon string }
+		var arRows []AnalysisResult
+		if err := db.Find(&arRows).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "gagal memuat verdict"})
+		}
+		verdicts := make(map[arKey]AnalysisResult, len(arRows))
+		for _, ar := range arRows {
+			verdicts[arKey{ar.Ticker, ar.Horizon}] = ar
+		}
+
 		totalCost, totalValue := 0.0, 0.0
 		hasMarketData := false
 		for _, p := range positions {
@@ -160,6 +171,26 @@ func listPortfolio(db *gorm.DB) fiber.Handler {
 				pr.ProfitLossIDR = ptr(pl)
 				if cost > 0 {
 					pr.ProfitLossPct = ptr((md.LastPrice/p.AvgBuyPrice - 1) * 100)
+				}
+			}
+			// Populate rule verdicts when an AnalysisResult exists (T3).
+			// AI side stays nil until T4; disagreement is therefore false.
+			var shortRule, longRule *string
+			if ar, ok := verdicts[arKey{p.Ticker, horizonShort}]; ok && ar.ID != "" {
+				v := ar.RuleVerdict
+				shortRule = &v
+			}
+			if ar, ok := verdicts[arKey{p.Ticker, horizonLong}]; ok && ar.ID != "" {
+				v := ar.RuleVerdict
+				longRule = &v
+			}
+			if shortRule != nil || longRule != nil {
+				pr.Verdicts = &struct {
+					ShortTerm verdictSet `json:"short_term"`
+					LongTerm  verdictSet `json:"long_term"`
+				}{
+					ShortTerm: verdictSet{Rule: shortRule},
+					LongTerm:  verdictSet{Rule: longRule},
 				}
 			}
 			items = append(items, pr)
