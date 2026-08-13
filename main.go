@@ -31,7 +31,7 @@ func initDB(path string) *gorm.DB {
 	if err != nil {
 		log.Fatalf("gagal membuka database: %v", err)
 	}
-	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AnalysisResult{}, &AppSettings{}); err != nil {
+	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AnalysisResult{}, &AppSettings{}, &Opportunity{}); err != nil {
 		log.Fatalf("gagal migrasi: %v", err)
 	}
 	return db
@@ -39,6 +39,7 @@ func initDB(path string) *gorm.DB {
 
 func main() {
 	db := initDB(env("DB_PATH", "portofolio.db"))
+	seedOpportunities(db) // seed/maintain the LQ45/Kompas100 liquid universe (T5)
 	webDir := env("WEB_DIR", "./web/out")
 
 	app := fiber.New(fiber.Config{AppName: "Portofolio IHSG"})
@@ -54,6 +55,9 @@ func main() {
 	api.Post("/market-data/refresh", refreshMarketData(db))
 	api.Get("/stocks/:ticker", getStockDetail(db))
 	api.Post("/stocks/:ticker/ai-analyze", analyzeStockAI(db))
+	api.Get("/opportunities", listOpportunities(db))
+	api.Get("/opportunities/lookup", lookupOpportunity(db))
+	api.Post("/opportunities/refresh", refreshOpportunities(db))
 	api.Get("/settings", getSettings(db))
 	api.Put("/settings", updateSettings(db))
 

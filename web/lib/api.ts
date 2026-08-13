@@ -172,3 +172,59 @@ export const analyzeStockAI = (ticker: string) =>
   fetch(`${BASE}/stocks/${encodeURIComponent(ticker)}/ai-analyze`, {
     method: "POST",
   }).then(asJson<AIAnalyzeResponse>);
+
+// --- Opportunities (T5) — LQ45/Kompas100 ranked discovery ---
+
+export type IndexMembership = "LQ45" | "KOMPAS100" | "BOTH";
+
+export interface Opportunity {
+  ticker: string;
+  company_name: string;
+  index_membership: IndexMembership;
+  sector: string;
+  last_price: number;
+  short_term_rule: string; // BUY | HOLD | SELL
+  short_term_score: number; // 0-100
+  long_term_rule: string;
+  long_term_score: number;
+  roe: number;
+  per: number;
+  risk_flags: string[];
+  short_term_breakdown: Record<string, number>;
+  long_term_breakdown: Record<string, number>;
+}
+
+export interface OpportunityList {
+  opportunities: Opportunity[];
+}
+
+/** Custom-ticker lookup result; `illiquid` is true outside LQ45/Kompas100. */
+export interface LookupResult {
+  ticker: string;
+  name?: string;
+  index_membership?: string;
+  sector?: string;
+  in_universe: boolean;
+  illiquid: boolean;
+}
+
+export const fetchOpportunities = (filter = "", minVerdict = "", q = "") => {
+  const params = new URLSearchParams();
+  if (filter) params.set("filter", filter);
+  if (minVerdict) params.set("min_verdict", minVerdict);
+  if (q) params.set("q", q);
+  const qs = params.toString();
+  return fetch(`${BASE}/opportunities${qs ? `?${qs}` : ""}`).then(
+    asJson<OpportunityList>,
+  );
+};
+
+export const lookupTicker = (q: string) =>
+  fetch(`${BASE}/opportunities/lookup?q=${encodeURIComponent(q)}`).then(
+    asJson<LookupResult>,
+  );
+
+export const refreshOpportunities = () =>
+  fetch(`${BASE}/opportunities/refresh`, { method: "POST" }).then(
+    asJson<RefreshResult>,
+  );
