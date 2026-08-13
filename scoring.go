@@ -418,11 +418,12 @@ type horizonDTO struct {
 }
 
 type stockDetailResponse struct {
-	Ticker      string        `json:"ticker"`
-	CompanyName string        `json:"company_name"`
-	MarketData  marketDataDTO `json:"market_data"`
-	ShortTerm   horizonDTO    `json:"short_term"`
-	LongTerm    horizonDTO    `json:"long_term"`
+	Ticker       string        `json:"ticker"`
+	CompanyName  string        `json:"company_name"`
+	NeedsRefresh bool          `json:"needs_refresh"`
+	MarketData   marketDataDTO `json:"market_data"`
+	ShortTerm    horizonDTO    `json:"short_term"`
+	LongTerm     horizonDTO    `json:"long_term"`
 }
 
 func toRuleDTO(ar AnalysisResult) ruleDTO {
@@ -503,9 +504,6 @@ func getStockDetail(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ticker := strings.ToUpper(strings.TrimSpace(c.Params("ticker")))
 		resp, err := buildStockDetail(db, ticker)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return c.Status(404).JSON(fiber.Map{"error": "data pasar tidak ditemukan untuk ticker ini"})
-		}
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "gagal memuat data pasar"})
 		}
@@ -515,12 +513,22 @@ func getStockDetail(db *gorm.DB) fiber.Handler {
 
 // buildStockDetail assembles the stock-detail response for a ticker. Shared by
 // GET /stocks/:ticker and the T4 AI-analyze handler (which re-renders detail
-// after storing a fresh AI verdict). Returns gorm.ErrRecordNotFound when no
-// MarketData row exists.
+// after storing a fresh AI verdict). When no MarketData row exists yet (e.g. a
+// position was added before the first refresh), it returns a detail with zeroed
+// market data + needs_refresh=true instead of erroring, so the frontend can
+// prompt for a refresh rather than showing a 404.
 func buildStockDetail(db *gorm.DB, ticker string) (stockDetailResponse, error) {
 	var md MarketData
 	if err := db.First(&md, "ticker = ?", ticker).Error; err != nil {
-		return stockDetailResponse{}, err
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return stockDetailResponse{}, err
+		}
+		// Position held but no market data yet: zeroed fields + needs_refresh.
+		// Rule/AI are left nil (no data to score against).
+		return stockDetailResponse{
+			Ticker:       ticker,
+			NeedsRefresh: true,
+		}, nil
 	}
 
 	shortAR := loadAnalysis(db, ticker, horizonShort, md)
@@ -532,8 +540,9 @@ func buildStockDetail(db *gorm.DB, ticker string) (stockDetailResponse, error) {
 		updated = md.UpdatedAt.UTC().Format(time.RFC3339)
 	}
 	return stockDetailResponse{
-		Ticker:      md.Ticker,
-		CompanyName: md.CompanyName,
+		Ticker:       md.Ticker,
+		CompanyName:  md.CompanyName,
+		NeedsRefresh: false,
 		MarketData: marketDataDTO{
 			LastPrice: md.LastPrice,
 			PrevClose: md.PrevClose,

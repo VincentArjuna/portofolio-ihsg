@@ -93,6 +93,7 @@ export interface StockHorizon {
 export interface StockDetail {
   ticker: string;
   company_name: string;
+  needs_refresh: boolean;
   market_data: MarketDataDetail;
   short_term: StockHorizon;
   long_term: StockHorizon;
