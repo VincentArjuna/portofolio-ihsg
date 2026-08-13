@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   analyzeStockAI,
   fetchStockDetail,
+  refreshMarketData,
   type StockDetail,
   type StockHorizon,
 } from "@/lib/api";
@@ -68,6 +69,7 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (t: string) => {
     setLoading(true);
@@ -87,6 +89,22 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
     if (!ticker) return;
     load(ticker);
   }, [ticker, load]);
+
+  // refreshAndReload fetches market data for all held tickers, then reloads
+  // this ticker's detail so needs_refresh clears once data is present.
+  const refreshAndReload = useCallback(async () => {
+    if (!ticker || refreshing) return;
+    setRefreshing(true);
+    setAiMessage(null);
+    try {
+      await refreshMarketData();
+      await load(ticker);
+    } catch (e) {
+      setAiMessage(e instanceof Error ? e.message : "Pembaruan data pasar gagal.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [ticker, refreshing, load]);
 
   // runAnalysis triggers the Hermes AI bridge and merges the returned detail.
   const runAnalysis = useCallback(async () => {
@@ -193,7 +211,21 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
           </p>
         )}
 
-        {data && (
+        {data && data.needs_refresh && (
+          <div className="mt-6 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+            <p>Belum ada data pasar. Klik Perbarui Data untuk mengambil data terbaru.</p>
+            <button
+              type="button"
+              onClick={refreshAndReload}
+              disabled={refreshing || loading}
+              className="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {refreshing ? "Memperbarui..." : "Perbarui Data"}
+            </button>
+          </div>
+        )}
+
+        {data && !data.needs_refresh && (
           <div className="mt-6 space-y-6">
             {/* Market data + technicals */}
             <section>
