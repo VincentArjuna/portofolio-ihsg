@@ -7,13 +7,15 @@ Personal single-user responsive web app to track manual Indonesian Stock Exchang
 ### Included (v1)
 - Single-user local responsive web application.
 - **Dockerized**: Multi-stage Dockerfile + `docker-compose.yml` for local execution.
-- Portfolio entry: Ticker (IHSG `.JK`), shares, average buy price, buy date.
+- Portfolio entry: Ticker (IHSG `.JK`), shares (supports **fractional shares** — decimal input), average buy price (**decimal input supported** for averaged positions), buy date.
 - Public data collection: Delayed prices (Yahoo Finance `.JK`) and financial statements/company metadata (IDX official endpoints/web data).
 - Automated daily background data refresh with toggle, plus on-demand "Refresh now".
 - Dual-horizon rule-based recommendation model (Short term: 6–12 months, Long term: 3–5 years).
 - Independent Hermes AI analysis triggered on-demand via "Analisis AI" button using local Hermes CLI (`hermes chat -q`).
 - Side-by-side dashboard display of Rule-based score and AI assessment, with explicit disagreement highlighting.
 - Pre-filtered external stock discovery (LQ45/Kompas100 pre-filter + search).
+- **Auto-analysis for non-index tickers**: when a user adds a ticker outside LQ45/Kompas100, the app automatically fetches market data and generates rule-based scoring + Hermes AI analysis for it. No restriction on which IHSG tickers can be tracked.
+- **Premium dark-mode UI** (Linear-inspired design system): near-black canvas, semi-transparent surfaces, tight type, tabular monospace numbers, intentional accent color, no AI-slop defaults.
 - Indonesian UI language and Indonesian AI explanations.
 
 ### Excluded (v1)
@@ -48,7 +50,7 @@ Personal single-user responsive web app to track manual Indonesian Stock Exchang
 
 ## 3. Data Entities
 
-- **Position**: `id`, `ticker`, `shares`, `avg_buy_price`, `buy_date`, `created_at`, `updated_at`.
+- **Position**: `id`, `ticker`, `shares` (float64 — supports fractional shares), `avg_buy_price` (float64 — supports decimal precision), `buy_date`, `created_at`, `updated_at`.
 - **MarketData**: `ticker`, `company_name`, `last_price`, `pe_ratio`, `pbv_ratio`, `roe`, `der`, `rev_growth`, `net_margin`, `ma20`, `ma50`, `ma200`, `updated_at`.
 - **AnalysisResult**: `id`, `ticker`, `horizon` (short/long), `rule_verdict`, `rule_score`, `rule_breakdown_json`, `ai_verdict`, `ai_explanation`, `ai_updated_at`.
 - **Settings**: `refresh_enabled`, `last_background_refresh`.
