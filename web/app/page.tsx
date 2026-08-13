@@ -27,6 +27,7 @@ export default function Page() {
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailTicker, setDetailTicker] = useState<string | null>(null);
+  const [detailAutoAnalyze, setDetailAutoAnalyze] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -67,7 +68,14 @@ export default function Page() {
     setEditing(p);
     setModalOpen(true);
   };
-  const openDetail = (p: Position) => setDetailTicker(p.ticker);
+  const openDetail = (p: Position) => {
+    setDetailAutoAnalyze(false);
+    setDetailTicker(p.ticker);
+  };
+  const openAnalyze = (p: Position) => {
+    setDetailAutoAnalyze(true);
+    setDetailTicker(p.ticker);
+  };
 
   const handleSubmit = async (input: PositionInput, id: string | null) => {
     if (id) await updatePosition(id, input);
@@ -170,6 +178,7 @@ export default function Page() {
           onEdit={openEdit}
           onDelete={handleDelete}
           onDetail={openDetail}
+          onAnalyze={openAnalyze}
         />
       )}
 
@@ -189,7 +198,11 @@ export default function Page() {
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <StockDetailModal ticker={detailTicker} onClose={() => setDetailTicker(null)} />
+      <StockDetailModal
+        ticker={detailTicker}
+        autoAnalyze={detailAutoAnalyze}
+        onClose={() => setDetailTicker(null)}
+      />
     </main>
   );
 }

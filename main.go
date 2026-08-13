@@ -53,6 +53,7 @@ func main() {
 	api.Delete("/portfolio/:id", deletePosition(db))
 	api.Post("/market-data/refresh", refreshMarketData(db))
 	api.Get("/stocks/:ticker", getStockDetail(db))
+	api.Post("/stocks/:ticker/ai-analyze", analyzeStockAI(db))
 	api.Get("/settings", getSettings(db))
 	api.Put("/settings", updateSettings(db))
 

@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchStockDetail, type StockDetail, type StockHorizon } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  analyzeStockAI,
+  fetchStockDetail,
+  type StockDetail,
+  type StockHorizon,
+} from "@/lib/api";
 import { formatDateTime, formatIDR, formatPct } from "@/lib/format";
-import VerdictBadge from "@/components/VerdictBadge";
+import VerdictBadge, { verdictLabel } from "@/components/VerdictBadge";
 
 interface Props {
   ticker: string | null; // when set, modal opens for this ticker
+  autoAnalyze?: boolean; // T4: trigger "Analisis AI" immediately on open
   onClose: () => void;
 }
 
@@ -56,21 +62,60 @@ function rationale(h: StockHorizon, factors: { key: string; label: string; max: 
   return `Skor ${h.rule.score}/100 ${verb}. Terkuat: ${top.label} (${topShare}%). Terlemah: ${low.label} (${lowShare}%).`;
 }
 
-export default function StockDetailModal({ ticker, onClose }: Props) {
+export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props) {
   const [data, setData] = useState<StockDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!ticker) return;
+  const load = useCallback(async (t: string) => {
     setLoading(true);
     setError(null);
     setData(null);
-    fetchStockDetail(ticker)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail saham"))
-      .finally(() => setLoading(false));
-  }, [ticker]);
+    setAiMessage(null);
+    try {
+      setData(await fetchStockDetail(t));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal memuat detail saham");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ticker) return;
+    load(ticker);
+  }, [ticker, load]);
+
+  // runAnalysis triggers the Hermes AI bridge and merges the returned detail.
+  const runAnalysis = useCallback(async () => {
+    if (!ticker || analyzing) return;
+    setAnalyzing(true);
+    setAiMessage(null);
+    try {
+      const res = await analyzeStockAI(ticker);
+      if (res.detail) {
+        setData(res.detail);
+      }
+      if (res.status === "unavailable" || res.status === "error") {
+        setAiMessage(res.message ?? "Analisis AI tidak dapat dijalankan.");
+      }
+    } catch (e) {
+      setAiMessage(e instanceof Error ? e.message : "Analisis AI gagal.");
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [ticker, analyzing]);
+
+  // Auto-trigger when opened via the "Analisis AI" row button and no AI yet.
+  useEffect(() => {
+    if (!ticker || !autoAnalyze) return;
+    if (data && !data.short_term.ai && !data.long_term.ai) {
+      runAnalysis();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, autoAnalyze, data]);
 
   useEffect(() => {
     if (!ticker) return;
@@ -102,14 +147,37 @@ export default function StockDetailModal({ ticker, onClose }: Props) {
               {data?.company_name ?? "Detail saham & analisis rule"}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-edge px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-ink"
-          >
-            Tutup
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={runAnalysis}
+              disabled={analyzing || loading}
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {analyzing ? "Menganalisis..." : "Analisis AI"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-edge px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+            >
+              Tutup
+            </button>
+          </div>
         </div>
+
+        {/* AI generating / fallback state (DESIGN: "Hermes sedang menganalisis...") */}
+        {analyzing && (
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            Hermes sedang menganalisis data...
+          </div>
+        )}
+        {aiMessage && !analyzing && (
+          <p className="mt-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
+            {aiMessage}
+          </p>
+        )}
 
         {loading && (
           <div className="mt-6 space-y-2">
@@ -148,12 +216,13 @@ export default function StockDetailModal({ ticker, onClose }: Props) {
               </div>
             </section>
 
-            <HorizonCard title="Jangka Pendek" horizon={data.short_term} factors={SHORT_FACTORS} />
-            <HorizonCard title="Jangka Panjang" horizon={data.long_term} factors={LONG_FACTORS} />
+            <HorizonCard title="Jangka Pendek" horizon={data.short_term} factors={SHORT_FACTORS} analyzing={analyzing} />
+            <HorizonCard title="Jangka Panjang" horizon={data.long_term} factors={LONG_FACTORS} analyzing={analyzing} />
 
             <p className="text-xs text-muted">
-              Verdict bersifat deterministik (rule-based) untuk profil risiko
-              Balanced-Growth. Sisi AI hadir di T4. Bukan saran investasi.
+              Verdict rule deterministik (Balanced-Growth). Verdict AI dari
+              Hermes CLI lokal dan disimpan 24 jam. Harga tertunda. Bukan saran
+              investasi.
             </p>
           </div>
         )}
@@ -175,11 +244,14 @@ function HorizonCard({
   title,
   horizon,
   factors,
+  analyzing,
 }: {
   title: string;
   horizon: StockHorizon;
   factors: { key: string; label: string; max: number }[];
+  analyzing: boolean;
 }) {
+  const ai = horizon.ai;
   return (
     <section className="rounded-lg border border-edge bg-base/30 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -197,34 +269,93 @@ function HorizonCard({
         )}
       </div>
 
-      {/* Score breakdown bars */}
-      {horizon.rule ? (
-        <div className="mt-3 space-y-1.5">
-          {factors.map((f) => {
-            const v = horizon.rule!.breakdown[f.key] ?? 0;
-            const pct = Math.max(0, Math.min(100, (v / f.max) * 100));
-            return (
-              <div key={f.key} className="flex items-center gap-2">
-                <span className="w-32 shrink-0 text-xs text-muted">{f.label}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-base">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="tnum w-14 shrink-0 text-right text-xs text-ink">
-                  {v}/{f.max}
-                </span>
-              </div>
-            );
-          })}
+      {/* Disagreement banner (DESIGN signature: "Beda Pendapat: ...") */}
+      {horizon.disagreement && horizon.rule && ai?.verdict && (
+        <div className="mt-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning">
+          ⚠ Beda Pendapat: Aturan {verdictLabel(horizon.rule.verdict)} vs AI {verdictLabel(ai.verdict)}
         </div>
-      ) : (
-        <p className="mt-3 text-sm text-muted">Belum ada skor rule.</p>
       )}
 
-      <p className="mt-3 text-xs leading-relaxed text-muted">
-        {rationale(horizon, factors)}
-      </p>
+      <div className="mt-3 grid gap-4 md:grid-cols-2">
+        {/* Rule side */}
+        <div>
+          {horizon.rule ? (
+            <div className="space-y-1.5">
+              {factors.map((f) => {
+                const v = horizon.rule!.breakdown[f.key] ?? 0;
+                const pct = Math.max(0, Math.min(100, (v / f.max) * 100));
+                return (
+                  <div key={f.key} className="flex items-center gap-2">
+                    <span className="w-32 shrink-0 text-xs text-muted">{f.label}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-base">
+                      <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="tnum w-14 shrink-0 text-right text-xs text-ink">
+                      {v}/{f.max}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">Belum ada skor rule.</p>
+          )}
+          <p className="mt-3 text-xs leading-relaxed text-muted">
+            {rationale(horizon, factors)}
+          </p>
+        </div>
 
-      {/* Risk flags */}
+        {/* AI side */}
+        <div className="rounded-md border border-edge bg-surface/60 p-3">
+          {ai?.verdict ? (
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  AI Hermes
+                </span>
+                <div className="flex items-center gap-2">
+                  {ai.confidence ? (
+                    <span className="tnum text-xs text-muted">
+                      keyakinan {formatPct(ai.confidence * 100)}
+                    </span>
+                  ) : null}
+                  <VerdictBadge verdict={ai.verdict} size="md" />
+                </div>
+              </div>
+              {ai.explanation && (
+                <p className="mt-2 text-xs leading-relaxed text-ink whitespace-pre-line">
+                  {ai.explanation}
+                </p>
+              )}
+              {ai.risk_factors && ai.risk_factors.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {ai.risk_factors.map((r, i) => (
+                    <span
+                      key={i}
+                      className="rounded-md border border-danger/40 bg-danger/10 px-2 py-0.5 text-[11px] font-medium text-danger"
+                    >
+                      ⚠ {r}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {ai.updated_at && (
+                <p className="tnum mt-2 text-[10px] text-muted">
+                  Dianalisis {formatDateTime(ai.updated_at)}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">
+              {analyzing
+                ? "Hermes sedang menganalisis data..."
+                : "Belum ada analisis AI. Tekan “Analisis AI”."}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Rule risk flags */}
       {horizon.risk_flags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {horizon.risk_flags.map((flag) => (

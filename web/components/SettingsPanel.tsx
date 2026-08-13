@@ -21,6 +21,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const [last, setLast] = useState<Settings | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [hours, setHours] = useState(24);
+  const [hermes, setHermes] = useState("hermes");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -35,6 +36,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
         setLast(s);
         setEnabled(s.background_refresh_enabled);
         setHours(s.refresh_interval_hours);
+        setHermes(s.hermes_executable || "hermes");
       })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Gagal memuat pengaturan"),
@@ -60,6 +62,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
       const s = await saveSettings({
         background_refresh_enabled: enabled,
         refresh_interval_hours: hours,
+        hermes_executable: hermes,
       });
       setLast(s);
       setSaved(true);
@@ -126,6 +129,22 @@ export default function SettingsPanel({ open, onClose }: Props) {
               {formatDateTime(last.last_background_refresh)}
             </p>
           )}
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted">
+              Executable Hermes AI
+            </label>
+            <input
+              type="text"
+              value={hermes}
+              onChange={(e) => setHermes(e.target.value)}
+              placeholder="hermes"
+              className="w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              Nama atau path absolut CLI Hermes (dipakai tombol “Analisis AI”).
+            </p>
+          </div>
 
           {error && (
             <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">

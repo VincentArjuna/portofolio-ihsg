@@ -50,6 +50,7 @@ export interface Settings {
   background_refresh_enabled: boolean;
   refresh_interval_hours: number;
   last_background_refresh: string | null;
+  hermes_executable: string;
 }
 
 // --- Stock detail (T3) — shapes mirror GET /stocks/:ticker ---
@@ -85,6 +86,7 @@ export interface StockHorizon {
     risk_factors?: string[];
     updated_at?: string;
   } | null; // null until T4
+  disagreement: boolean; // true when rule + ai verdicts both present and differ
   risk_flags: string[];
 }
 
@@ -97,8 +99,16 @@ export interface StockDetail {
 }
 
 export type SettingsInput = Partial<
-  Pick<Settings, "background_refresh_enabled" | "refresh_interval_hours">
+  Pick<Settings, "background_refresh_enabled" | "refresh_interval_hours" | "hermes_executable">
 >;
+
+// --- AI analysis (T4) — POST /stocks/:ticker/ai-analyze ---
+
+export interface AIAnalyzeResponse {
+  status: "done" | "cached" | "unavailable" | "error";
+  message?: string;
+  detail?: StockDetail;
+}
 
 const BASE = "/api/v1";
 
@@ -157,3 +167,8 @@ export const saveSettings = (input: SettingsInput) =>
 
 export const fetchStockDetail = (ticker: string) =>
   fetch(`${BASE}/stocks/${encodeURIComponent(ticker)}`).then(asJson<StockDetail>);
+
+export const analyzeStockAI = (ticker: string) =>
+  fetch(`${BASE}/stocks/${encodeURIComponent(ticker)}/ai-analyze`, {
+    method: "POST",
+  }).then(asJson<AIAnalyzeResponse>);

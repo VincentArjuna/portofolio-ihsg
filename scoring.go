@@ -16,18 +16,24 @@ import (
 // AnalysisResult is the persisted rule-based verdict for one ticker + horizon.
 // One row per (ticker, horizon) with horizon ∈ {"short","long"}. rule_breakdown
 // and risk_flags are stored as JSON strings (SQLite TEXT) so no GORM serializer
-// dependency is needed. AI fields arrive in T4 (Hermes bridge); GORM
-// AutoMigrate extends this table then without data loss.
+// dependency is needed. AI* fields are populated by the T4 Hermes bridge (nil/
+// zero until "Analisis AI" runs); GORM AutoMigrate extends this table then
+// without data loss.
 type AnalysisResult struct {
-	ID            string    `gorm:"primaryKey" json:"id"`
-	Ticker        string    `gorm:"index;not null" json:"ticker"`
-	Horizon       string    `gorm:"index;not null" json:"horizon"` // "short" | "long"
-	RuleVerdict   string    `json:"rule_verdict"`                  // "BUY" | "HOLD" | "SELL"
-	RuleScore     int       `json:"rule_score"`                    // 0-100
-	RuleBreakdown string    `json:"rule_breakdown"`                // JSON: {"trend_teknis":25,...}
-	RiskFlags     string    `json:"risk_flags"`                    // JSON: ["high_debt",...]
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            string     `gorm:"primaryKey" json:"id"`
+	Ticker        string     `gorm:"index;not null" json:"ticker"`
+	Horizon       string     `gorm:"index;not null" json:"horizon"` // "short" | "long"
+	RuleVerdict   string     `json:"rule_verdict"`                  // "BUY" | "HOLD" | "SELL"
+	RuleScore     int        `json:"rule_score"`                    // 0-100
+	RuleBreakdown string     `json:"rule_breakdown"`                // JSON: {"trend_teknis":25,...}
+	RiskFlags     string     `json:"risk_flags"`                    // JSON: ["high_debt",...]
+	AIVerdict     string     `json:"ai_verdict"`                    // "" until T4 run; BUY|HOLD|SELL
+	AIExplanation string     `json:"ai_explanation"`                // Indonesian reasoning + limitations
+	AIConfidence  float64    `json:"ai_confidence"`                 // 0.0-1.0
+	AIRiskFactors string     `json:"ai_risk_factors"`               // JSON: ["...","..."]
+	AIUpdatedAt   *time.Time `json:"ai_updated_at"`                 // nil until T4 run; drives 24h cache
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 const (
@@ -406,7 +412,8 @@ type aiVerdictDTO struct {
 type horizonDTO struct {
 	HorizonLabel string        `json:"horizon"`   // "6-12 Bulan" / "3-5 Tahun"
 	Rule         *ruleDTO      `json:"rule"`      // null only if no data at all
-	AI           *aiVerdictDTO `json:"ai"`        // null until T4
+	AI           *aiVerdictDTO `json:"ai"`        // null until T4 Hermes run
+	Disagreement bool          `json:"disagreement"`
 	RiskFlags    []string      `json:"risk_flags"`
 }
 
@@ -437,6 +444,35 @@ func riskFlagsOf(ar AnalysisResult) []string {
 	return f
 }
 
+// toAIDTO maps the persisted AI fields of an AnalysisResult onto the detail DTO.
+// Returns nil when no AI run has happened yet (AIVerdict empty) so the frontend
+// renders the "Analisis AI" trigger rather than an empty card.
+func toAIDTO(ar AnalysisResult) *aiVerdictDTO {
+	if ar.AIVerdict == "" {
+		return nil
+	}
+	var risks []string
+	if ar.AIRiskFactors != "" && ar.AIRiskFactors != "null" {
+		_ = json.Unmarshal([]byte(ar.AIRiskFactors), &risks)
+	}
+	updated := ""
+	if ar.AIUpdatedAt != nil && !ar.AIUpdatedAt.IsZero() {
+		updated = ar.AIUpdatedAt.UTC().Format(time.RFC3339)
+	}
+	return &aiVerdictDTO{
+		Verdict:     ar.AIVerdict,
+		Explanation: ar.AIExplanation,
+		Confidence:  ar.AIConfidence,
+		RiskFactors: risks,
+		UpdatedAt:   updated,
+	}
+}
+
+// disagree is true when both rule and AI verdicts are present and differ.
+func disagree(ruleVerdict, aiVerdict string) bool {
+	return ruleVerdict != "" && aiVerdict != "" && ruleVerdict != aiVerdict
+}
+
 // loadAnalysis returns the persisted AnalysisResult for a ticker+horizon, or
 // derives one from the live snapshot when no row exists yet (e.g. data fetched
 // before scoring was wired). Keeps the detail view never-empty.
@@ -459,57 +495,72 @@ func horizonLabel(horizon string) string {
 	return horizonShortLabel
 }
 
-// GET /api/v1/stocks/:ticker — market data + short/long rule breakdown.
+// GET /api/v1/stocks/:ticker — market data + short/long rule+AI breakdown.
 // ponytail: path follows docs/api-contract.md (`/stocks/:ticker`), not the
 // `/portfolio/:id/detail` shape mentioned in the task brief — the contract and
 // issue acceptance criteria are the source of truth.
 func getStockDetail(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ticker := strings.ToUpper(strings.TrimSpace(c.Params("ticker")))
-		var md MarketData
-		err := db.First(&md, "ticker = ?", ticker).Error
+		resp, err := buildStockDetail(db, ticker)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(404).JSON(fiber.Map{"error": "data pasar tidak ditemukan untuk ticker ini"})
 		}
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "gagal memuat data pasar"})
 		}
-
-		shortAR := loadAnalysis(db, ticker, horizonShort, md)
-		longAR := loadAnalysis(db, ticker, horizonLong, md)
-		shortRule := toRuleDTO(shortAR)
-		longRule := toRuleDTO(longAR)
-		updated := ""
-		if !md.UpdatedAt.IsZero() {
-			updated = md.UpdatedAt.UTC().Format(time.RFC3339)
-		}
-		return c.JSON(stockDetailResponse{
-			Ticker:      md.Ticker,
-			CompanyName: md.CompanyName,
-			MarketData: marketDataDTO{
-				LastPrice: md.LastPrice,
-				PrevClose: md.PrevClose,
-				PERatio:   md.PERatio,
-				PBVRatio:  md.PBVRatio,
-				ROE:       md.ROE,
-				DER:       md.DER,
-				RevGrowth: md.RevGrowth,
-				NetMargin: md.NetMargin,
-				MA20:      md.MA20,
-				MA50:      md.MA50,
-				MA200:     md.MA200,
-				UpdatedAt: updated,
-			},
-			ShortTerm: horizonDTO{
-				HorizonLabel: horizonLabel(horizonShort),
-				Rule:         &shortRule,
-				RiskFlags:    riskFlagsOf(shortAR),
-			},
-			LongTerm: horizonDTO{
-				HorizonLabel: horizonLabel(horizonLong),
-				Rule:         &longRule,
-				RiskFlags:    riskFlagsOf(longAR),
-			},
-		})
+		return c.JSON(resp)
 	}
+}
+
+// buildStockDetail assembles the stock-detail response for a ticker. Shared by
+// GET /stocks/:ticker and the T4 AI-analyze handler (which re-renders detail
+// after storing a fresh AI verdict). Returns gorm.ErrRecordNotFound when no
+// MarketData row exists.
+func buildStockDetail(db *gorm.DB, ticker string) (stockDetailResponse, error) {
+	var md MarketData
+	if err := db.First(&md, "ticker = ?", ticker).Error; err != nil {
+		return stockDetailResponse{}, err
+	}
+
+	shortAR := loadAnalysis(db, ticker, horizonShort, md)
+	longAR := loadAnalysis(db, ticker, horizonLong, md)
+	shortRule := toRuleDTO(shortAR)
+	longRule := toRuleDTO(longAR)
+	updated := ""
+	if !md.UpdatedAt.IsZero() {
+		updated = md.UpdatedAt.UTC().Format(time.RFC3339)
+	}
+	return stockDetailResponse{
+		Ticker:      md.Ticker,
+		CompanyName: md.CompanyName,
+		MarketData: marketDataDTO{
+			LastPrice: md.LastPrice,
+			PrevClose: md.PrevClose,
+			PERatio:   md.PERatio,
+			PBVRatio:  md.PBVRatio,
+			ROE:       md.ROE,
+			DER:       md.DER,
+			RevGrowth: md.RevGrowth,
+			NetMargin: md.NetMargin,
+			MA20:      md.MA20,
+			MA50:      md.MA50,
+			MA200:     md.MA200,
+			UpdatedAt: updated,
+		},
+		ShortTerm: horizonDTO{
+			HorizonLabel: horizonLabel(horizonShort),
+			Rule:         &shortRule,
+			AI:           toAIDTO(shortAR),
+			Disagreement: disagree(shortAR.RuleVerdict, shortAR.AIVerdict),
+			RiskFlags:    riskFlagsOf(shortAR),
+		},
+		LongTerm: horizonDTO{
+			HorizonLabel: horizonLabel(horizonLong),
+			Rule:         &longRule,
+			AI:           toAIDTO(longAR),
+			Disagreement: disagree(longAR.RuleVerdict, longAR.AIVerdict),
+			RiskFlags:    riskFlagsOf(longAR),
+		},
+	}, nil
 }
