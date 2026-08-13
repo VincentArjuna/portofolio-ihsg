@@ -52,6 +52,50 @@ export interface Settings {
   last_background_refresh: string | null;
 }
 
+// --- Stock detail (T3) — shapes mirror GET /stocks/:ticker ---
+
+export interface MarketDataDetail {
+  last_price: number;
+  prev_close: number;
+  pe_ratio: number;
+  pbv_ratio: number;
+  roe: number;
+  der: number;
+  rev_growth: number;
+  net_margin: number;
+  ma20: number;
+  ma50: number;
+  ma200: number;
+  updated_at: string;
+}
+
+export interface RuleDetail {
+  verdict: string; // BUY | HOLD | SELL
+  score: number; // 0-100
+  breakdown: Record<string, number>;
+}
+
+export interface StockHorizon {
+  horizon: string; // "6-12 Bulan" | "3-5 Tahun"
+  rule: RuleDetail | null;
+  ai: {
+    verdict?: string;
+    explanation?: string;
+    confidence?: number;
+    risk_factors?: string[];
+    updated_at?: string;
+  } | null; // null until T4
+  risk_flags: string[];
+}
+
+export interface StockDetail {
+  ticker: string;
+  company_name: string;
+  market_data: MarketDataDetail;
+  short_term: StockHorizon;
+  long_term: StockHorizon;
+}
+
 export type SettingsInput = Partial<
   Pick<Settings, "background_refresh_enabled" | "refresh_interval_hours">
 >;
@@ -110,3 +154,6 @@ export const saveSettings = (input: SettingsInput) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   }).then(asJson<Settings>);
+
+export const fetchStockDetail = (ticker: string) =>
+  fetch(`${BASE}/stocks/${encodeURIComponent(ticker)}`).then(asJson<StockDetail>);

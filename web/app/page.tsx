@@ -16,6 +16,7 @@ import KpiCards from "@/components/KpiCards";
 import HoldingsTable from "@/components/HoldingsTable";
 import PositionModal from "@/components/PositionModal";
 import SettingsPanel from "@/components/SettingsPanel";
+import StockDetailModal from "@/components/StockDetailModal";
 
 export default function Page() {
   const [data, setData] = useState<Portfolio | null>(null);
@@ -25,6 +26,7 @@ export default function Page() {
   const [editing, setEditing] = useState<Position | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [detailTicker, setDetailTicker] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -65,6 +67,7 @@ export default function Page() {
     setEditing(p);
     setModalOpen(true);
   };
+  const openDetail = (p: Position) => setDetailTicker(p.ticker);
 
   const handleSubmit = async (input: PositionInput, id: string | null) => {
     if (id) await updatePosition(id, input);
@@ -166,13 +169,15 @@ export default function Page() {
           loading={loading}
           onEdit={openEdit}
           onDelete={handleDelete}
+          onDetail={openDetail}
         />
       )}
 
       {/* Disagreement / data-freshness footnote */}
       <p className="mt-4 text-xs text-muted">
         Harga kini dan P&amp;L memakai data tertunda (delayed) dari Yahoo
-        Finance. Data verdict (Aturan vs AI) hadir di T3.
+        Finance. Verdict rule (Beli/Tahan/Jual) dihitung deterministik untuk
+        profil Balanced-Growth; sisi AI hadir di T4.
       </p>
 
       <PositionModal
@@ -183,6 +188,8 @@ export default function Page() {
       />
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <StockDetailModal ticker={detailTicker} onClose={() => setDetailTicker(null)} />
     </main>
   );
 }

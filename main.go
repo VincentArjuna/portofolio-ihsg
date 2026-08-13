@@ -31,7 +31,7 @@ func initDB(path string) *gorm.DB {
 	if err != nil {
 		log.Fatalf("gagal membuka database: %v", err)
 	}
-	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AppSettings{}); err != nil {
+	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AnalysisResult{}, &AppSettings{}); err != nil {
 		log.Fatalf("gagal migrasi: %v", err)
 	}
 	return db
@@ -52,6 +52,7 @@ func main() {
 	api.Put("/portfolio/:id", updatePosition(db))
 	api.Delete("/portfolio/:id", deletePosition(db))
 	api.Post("/market-data/refresh", refreshMarketData(db))
+	api.Get("/stocks/:ticker", getStockDetail(db))
 	api.Get("/settings", getSettings(db))
 	api.Put("/settings", updateSettings(db))
 
