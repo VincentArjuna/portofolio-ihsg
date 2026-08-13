@@ -173,25 +173,36 @@ func listPortfolio(db *gorm.DB) fiber.Handler {
 					pr.ProfitLossPct = ptr((md.LastPrice/p.AvgBuyPrice - 1) * 100)
 				}
 			}
-			// Populate rule verdicts when an AnalysisResult exists (T3).
-			// AI side stays nil until T4; disagreement is therefore false.
-			var shortRule, longRule *string
+			// Populate rule + AI verdicts when an AnalysisResult exists (T3/T4).
+			// AI stays nil until a Hermes run stores AIVerdict; disagreement is
+			// true only when both sides are present and differ.
+			var shortSet, longSet verdictSet
+			hasVerdict := false
 			if ar, ok := verdicts[arKey{p.Ticker, horizonShort}]; ok && ar.ID != "" {
-				v := ar.RuleVerdict
-				shortRule = &v
+				rv := ar.RuleVerdict
+				shortSet.Rule = &rv
+				if ar.AIVerdict != "" {
+					av := ar.AIVerdict
+					shortSet.AI = &av
+					shortSet.Disagreement = disagree(ar.RuleVerdict, ar.AIVerdict)
+				}
+				hasVerdict = true
 			}
 			if ar, ok := verdicts[arKey{p.Ticker, horizonLong}]; ok && ar.ID != "" {
-				v := ar.RuleVerdict
-				longRule = &v
+				rv := ar.RuleVerdict
+				longSet.Rule = &rv
+				if ar.AIVerdict != "" {
+					av := ar.AIVerdict
+					longSet.AI = &av
+					longSet.Disagreement = disagree(ar.RuleVerdict, ar.AIVerdict)
+				}
+				hasVerdict = true
 			}
-			if shortRule != nil || longRule != nil {
+			if hasVerdict {
 				pr.Verdicts = &struct {
 					ShortTerm verdictSet `json:"short_term"`
 					LongTerm  verdictSet `json:"long_term"`
-				}{
-					ShortTerm: verdictSet{Rule: shortRule},
-					LongTerm:  verdictSet{Rule: longRule},
-				}
+				}{ShortTerm: shortSet, LongTerm: longSet}
 			}
 			items = append(items, pr)
 		}

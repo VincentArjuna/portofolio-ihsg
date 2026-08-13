@@ -8,6 +8,7 @@ interface Props {
   onEdit: (p: Position) => void;
   onDelete: (p: Position) => void;
   onDetail: (p: Position) => void;
+  onAnalyze: (p: Position) => void;
 }
 
 const COLS = [
@@ -34,8 +35,8 @@ function Placeholder({ label = "menunggu data" }: { label?: string }) {
 }
 
 // Verdict badge + an explicit "beda pendapat" marker when rule disagrees with
-// AI (docs/DESIGN.md signature element). AI is null until T4, so the marker is
-// dormant for now but wired for when AI verdicts arrive.
+// AI (docs/DESIGN.md signature element). The marker lights up once a Hermes AI
+// run (T4) has stored a verdict that differs from the rule verdict.
 function VerdictCell({ verdict, disagreement }: { verdict: string | null; disagreement?: boolean }) {
   if (!verdict) return <Placeholder label="verdict hadir setelah data pasar dimuat" />;
   return (
@@ -65,7 +66,7 @@ function SkeletonRow() {
   );
 }
 
-export default function HoldingsTable({ positions, loading, onEdit, onDelete, onDetail }: Props) {
+export default function HoldingsTable({ positions, loading, onEdit, onDelete, onDetail, onAnalyze }: Props) {
   return (
     <div className="overflow-x-auto rounded-lg border border-edge">
       <table className="w-full min-w-[920px] border-collapse text-sm">
@@ -144,8 +145,16 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete, on
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => onDetail(p)}
+                        onClick={() => onAnalyze(p)}
                         className="rounded-md border border-accent/50 px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+                        title="Jalankan analisis Hermes AI"
+                      >
+                        Analisis AI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDetail(p)}
+                        className="rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-accent hover:text-accent"
                       >
                         Detail
                       </button>
