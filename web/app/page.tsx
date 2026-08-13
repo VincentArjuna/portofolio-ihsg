@@ -14,6 +14,7 @@ import {
 import { isStale } from "@/lib/format";
 import KpiCards from "@/components/KpiCards";
 import HoldingsTable from "@/components/HoldingsTable";
+import OpportunitiesPanel from "@/components/OpportunitiesPanel";
 import PositionModal from "@/components/PositionModal";
 import SettingsPanel from "@/components/SettingsPanel";
 import StockDetailModal from "@/components/StockDetailModal";
@@ -28,6 +29,7 @@ export default function Page() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailTicker, setDetailTicker] = useState<string | null>(null);
   const [detailAutoAnalyze, setDetailAutoAnalyze] = useState(false);
+  const [view, setView] = useState<"portfolio" | "opportunities">("portfolio");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -117,24 +119,51 @@ export default function Page() {
           >
             Pengaturan
           </button>
-          <button
-            type="button"
-            onClick={refreshMarket}
-            disabled={refreshing || positions.length === 0}
-            className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {refreshing ? "Memperbarui..." : "Perbarui Data"}
-          </button>
-          <button
-            type="button"
-            onClick={openAdd}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
-          >
-            + Tambah Posisi
-          </button>
+          {view === "portfolio" && (
+            <>
+              <button
+                type="button"
+                onClick={refreshMarket}
+                disabled={refreshing || positions.length === 0}
+                className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {refreshing ? "Memperbarui..." : "Perbarui Data"}
+              </button>
+              <button
+                type="button"
+                onClick={openAdd}
+                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
+              >
+                + Tambah Posisi
+              </button>
+            </>
+          )}
         </div>
       </header>
 
+      {/* View tabs */}
+      <nav className="mb-6 flex gap-1 border-b border-edge">
+        {([
+          { key: "portfolio", label: "Portofolio" },
+          { key: "opportunities", label: "Peluang (LQ45 / Kompas100)" },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setView(t.key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${
+              view === t.key
+                ? "border-accent text-accent"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {view === "portfolio" ? (
+        <>
       {/* Stale-data banner */}
       {data?.summary.last_market_update &&
         isStale(data.summary.last_market_update) && (
@@ -188,6 +217,10 @@ export default function Page() {
         Finance. Verdict rule (Beli/Tahan/Jual) dihitung deterministik untuk
         profil Balanced-Growth; sisi AI hadir di T4.
       </p>
+        </>
+      ) : (
+        <OpportunitiesPanel />
+      )}
 
       <PositionModal
         open={modalOpen}

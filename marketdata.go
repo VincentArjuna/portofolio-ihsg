@@ -282,35 +282,30 @@ func fetchMarketData(ticker string) (MarketData, error) {
 	return md, nil
 }
 
-// --- Refresh core (shared by manual handler + background scheduler) ---
+// --- Refresh core (shared by manual handler + background scheduler + T5 universe) ---
 
-// runRefresh fetches + stores market data for every held ticker, deduping by
-// ticker. A single ticker failure is logged and skipped; it never aborts the
-// batch. err is non-nil only when the portfolio read itself fails (callers
-// surface that as 500 / retry-next-slot). lastUpdate is the newest UpdatedAt
-// stored, or zero when nothing refreshed.
-func runRefresh(db *gorm.DB) (refreshed, failed int, lastUpdate time.Time, err error) {
-	var positions []Position
-	if err = db.Find(&positions).Error; err != nil {
-		return 0, 0, time.Time{}, err
-	}
-
-	seen := make(map[string]struct{}, len(positions))
-	for _, p := range positions {
-		if _, dup := seen[p.Ticker]; dup {
+// refreshTickers fetches + stores market data and re-scores a deduped ticker
+// set. A single ticker failure is logged and skipped; it never aborts the
+// batch. lastUpdate is the newest UpdatedAt stored, or zero when nothing
+// refreshed. Shared by the held-ticker refresh and the opportunity-universe
+// refresh (T5).
+func refreshTickers(db *gorm.DB, tickers []string) (refreshed, failed int, lastUpdate time.Time) {
+	seen := make(map[string]struct{}, len(tickers))
+	for _, t := range tickers {
+		if _, dup := seen[t]; dup {
 			continue
 		}
-		seen[p.Ticker] = struct{}{}
+		seen[t] = struct{}{}
 
-		md, ferr := fetchMarketData(p.Ticker)
+		md, ferr := fetchMarketData(t)
 		if ferr != nil {
-			log.Printf("refresh %s gagal: %v", p.Ticker, ferr)
+			log.Printf("refresh %s gagal: %v", t, ferr)
 			failed++
 			continue
 		}
 		md.UpdatedAt = time.Now().UTC()
 		if serr := db.Save(&md).Error; serr != nil {
-			log.Printf("refresh %s simpan gagal: %v", p.Ticker, serr)
+			log.Printf("refresh %s simpan gagal: %v", t, serr)
 			failed++
 			continue
 		}
@@ -321,6 +316,52 @@ func runRefresh(db *gorm.DB) (refreshed, failed int, lastUpdate time.Time, err e
 		}
 		refreshed++
 	}
+	return refreshed, failed, lastUpdate
+}
+
+// refreshSet is the deduped union of held tickers + the LQ45/Kompas100 universe.
+// The background/manual refresh covers the whole liquid universe, not just held
+// positions (issue #6: market-data refresh extended to cover the universe).
+func refreshSet(db *gorm.DB) ([]string, error) {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	add := func(t string) {
+		if t == "" {
+			return
+		}
+		if _, dup := seen[t]; dup {
+			return
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+
+	var positions []Position
+	if err := db.Find(&positions).Error; err != nil {
+		return nil, err
+	}
+	for _, p := range positions {
+		add(p.Ticker)
+	}
+
+	var opps []Opportunity
+	if err := db.Find(&opps).Error; err == nil { // tolerant: empty/unseeded → skip
+		for _, o := range opps {
+			add(o.Ticker)
+		}
+	}
+	return out, nil
+}
+
+// runRefresh fetches + stores market data for every held ticker and every
+// universe ticker, deduped. err is non-nil only when the position read fails
+// (callers surface that as 500 / retry-next-slot).
+func runRefresh(db *gorm.DB) (refreshed, failed int, lastUpdate time.Time, err error) {
+	tickers, err := refreshSet(db)
+	if err != nil {
+		return 0, 0, time.Time{}, err
+	}
+	refreshed, failed, lastUpdate = refreshTickers(db, tickers)
 	return refreshed, failed, lastUpdate, nil
 }
 
