@@ -146,7 +146,7 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
       onClick={onClose}
     >
       <div
@@ -154,11 +154,11 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
         aria-modal="true"
         aria-labelledby="detail-title"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-edge bg-surface p-6 shadow-xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-edge bg-surface p-6 shadow-xl"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="detail-title" className="text-xl font-bold tracking-tight text-ink">
+            <h2 id="detail-title" className="font-mono text-xl font-semibold tracking-tight text-ink">
               {ticker}
             </h2>
             <p className="mt-0.5 text-sm text-muted">
@@ -170,7 +170,7 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
               type="button"
               onClick={runAnalysis}
               disabled={analyzing || loading}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {analyzing ? "Menganalisis..." : "Analisis AI"}
             </button>
@@ -218,7 +218,7 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
               type="button"
               onClick={refreshAndReload}
               disabled={refreshing || loading}
-              className="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {refreshing ? "Memperbarui..." : "Perbarui Data"}
             </button>
@@ -265,7 +265,7 @@ export default function StockDetailModal({ ticker, autoAnalyze, onClose }: Props
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-edge bg-base/40 px-3 py-2">
+    <div className="rounded-md border border-edge bg-surface-1 px-3 py-2">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted">{label}</p>
       <p className="tnum mt-0.5 text-sm font-semibold text-ink">{value}</p>
     </div>
@@ -285,7 +285,7 @@ function HorizonCard({
 }) {
   const ai = horizon.ai;
   return (
-    <section className="rounded-lg border border-edge bg-base/30 p-4">
+    <section className="rounded-lg border border-edge bg-surface-1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-ink">{title}</h3>
@@ -319,7 +319,7 @@ function HorizonCard({
                 return (
                   <div key={f.key} className="flex items-center gap-2">
                     <span className="w-32 shrink-0 text-xs text-muted">{f.label}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-base">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-line-subtle">
                       <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="tnum w-14 shrink-0 text-right text-xs text-ink">
@@ -338,7 +338,7 @@ function HorizonCard({
         </div>
 
         {/* AI side */}
-        <div className="rounded-md border border-edge bg-surface/60 p-3">
+        <div className="rounded-md border border-edge bg-surface-1 p-3">
           {ai?.verdict ? (
             <div>
               <div className="flex items-center justify-between gap-2">

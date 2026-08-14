@@ -75,7 +75,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
       onClick={onClose}
     >
       <div
@@ -83,7 +83,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
         aria-modal="true"
         aria-labelledby="settings-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-edge bg-surface p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-edge bg-surface p-6 shadow-xl"
       >
         <h2 id="settings-title" className="text-lg font-semibold text-ink">
           Pengaturan
@@ -113,7 +113,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
             <select
               value={hours}
               onChange={(e) => setHours(Number(e.target.value))}
-              className="w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+              className="w-full rounded-md border border-edge bg-surface-1 px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
             >
               {INTERVALS.map((o) => (
                 <option key={o.hours} value={o.hours}>
@@ -139,7 +139,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
               value={hermes}
               onChange={(e) => setHermes(e.target.value)}
               placeholder="hermes"
-              className="w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+              className="w-full rounded-md border border-edge bg-surface-1 px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
             />
             <p className="mt-1 text-[11px] text-muted">
               Nama atau path absolut CLI Hermes (dipakai tombol “Analisis AI”).
@@ -168,7 +168,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:opacity-60"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-accent-hover disabled:opacity-60"
             >
               {busy ? "Menyimpan..." : "Simpan"}
             </button>

@@ -113,10 +113,10 @@ export default function Page() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Top bar */}
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      {/* Top bar — sticky, panel background (DESIGN) */}
+      <header className="sticky top-0 z-30 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel/80 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">
+          <h1 className="text-2xl font-medium tracking-tight text-ink">
             Portofolio IHSG
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -127,7 +127,7 @@ export default function Page() {
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+            className="rounded-md border border-edge bg-surface-1 px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-surface-2 hover:text-ink"
           >
             Pengaturan
           </button>
@@ -137,14 +137,14 @@ export default function Page() {
                 type="button"
                 onClick={refreshMarket}
                 disabled={refreshing || positions.length === 0}
-                className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md border border-edge bg-surface-1 px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {refreshing ? "Memperbarui..." : "Perbarui Data"}
               </button>
               <button
                 type="button"
                 onClick={openAdd}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-accent-hover"
               >
                 + Tambah Posisi
               </button>
@@ -208,13 +208,13 @@ export default function Page() {
 
       {/* Holdings */}
       {isEmpty ? (
-        <div className="rounded-lg border border-dashed border-edge bg-surface/40 p-12 text-center">
+        <div className="rounded-lg border border-dashed border-edge bg-surface-1 p-12 text-center">
           <p className="text-base text-ink">Belum ada saham di portofolio.</p>
           <p className="mt-1 text-sm text-muted">Tambah saham pertama Anda.</p>
           <button
             type="button"
             onClick={openAdd}
-            className="mt-5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110"
+            className="mt-5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-accent-hover"
           >
             + Tambah Posisi
           </button>
