@@ -438,9 +438,12 @@ func toRuleDTO(ar AnalysisResult) ruleDTO {
 }
 
 func riskFlagsOf(ar AnalysisResult) []string {
-	var f []string
+	f := []string{}
 	if ar.RiskFlags != "" && ar.RiskFlags != "null" {
 		_ = json.Unmarshal([]byte(ar.RiskFlags), &f)
+	}
+	if f == nil {
+		f = []string{}
 	}
 	return f
 }
@@ -528,6 +531,14 @@ func buildStockDetail(db *gorm.DB, ticker string) (stockDetailResponse, error) {
 		return stockDetailResponse{
 			Ticker:       ticker,
 			NeedsRefresh: true,
+			ShortTerm: horizonDTO{
+				HorizonLabel: horizonLabel(horizonShort),
+				RiskFlags:    []string{},
+			},
+			LongTerm: horizonDTO{
+				HorizonLabel: horizonLabel(horizonLong),
+				RiskFlags:    []string{},
+			},
 		}, nil
 	}
 
