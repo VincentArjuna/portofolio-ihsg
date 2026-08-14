@@ -9,6 +9,7 @@ import "testing"
 // decode, wantStatus, findPosition) live in the sibling _test.go files.
 
 func TestDecimalShares(t *testing.T) {
+	installStubFetcher(t) // keep the issue #17 background auto-fetch hermetic
 	db := testDB(t)
 	app := setupApp(db)
 

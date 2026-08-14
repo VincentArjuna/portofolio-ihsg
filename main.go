@@ -31,6 +31,13 @@ func initDB(path string) *gorm.DB {
 	if err != nil {
 		log.Fatalf("gagal membuka database: %v", err)
 	}
+	// Pure-Go SQLite (modernc) is single-writer. Cap the pool to one connection
+	// so the background auto-analyze/scheduler goroutines and foreground
+	// requests serialize instead of failing with "database is locked" under
+	// concurrent writes. Single-user local app → one connection is plenty.
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AnalysisResult{}, &AppSettings{}, &Opportunity{}); err != nil {
 		log.Fatalf("gagal migrasi: %v", err)
 	}
