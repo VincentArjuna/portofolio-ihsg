@@ -388,7 +388,7 @@ function HorizonCard({
       </div>
 
       {/* Rule risk flags */}
-      {horizon.risk_flags.length > 0 && (
+      {horizon.risk_flags && horizon.risk_flags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {horizon.risk_flags.map((flag) => (
             <span
