@@ -1,20 +1,52 @@
 @import "tailwindcss";
 
 /*
- * Design tokens from docs/DESIGN.md. Values are Tailwind's default
- * slate/sky/green/yellow/red scale; re-exposed under semantic names so the
- * markup reads like the design doc (bg-base, text-muted, border-edge, ...).
+ * Linear-inspired design tokens (docs/DESIGN.md). Near-black canvas,
+ * luminance-stacked translucent surfaces, single indigo accent. Borders are
+ * always semi-transparent white; cards/inputs are translucent overlays, never
+ * solid dark blocks.
  */
 @theme {
-  --color-base: #0f172a; /* bg-primary  (slate-900) main background */
-  --color-surface: #1e293b; /* bg-surface  (slate-800) cards / table header */
-  --color-edge: #334155; /* border      (slate-700) dividers */
-  --color-ink: #f8fafc; /* text-primary(slate-50) headlines, prices */
-  --color-muted: #94a3b8; /* text-muted  (slate-400) labels, timestamps */
-  --color-accent: #38bdf8; /* accent      (sky-400) primary actions */
-  --color-success: #22c55e; /* success     (green-500) buy / positive */
-  --color-warning: #eab308; /* warning     (yellow-500) hold / neutral */
-  --color-danger: #ef4444; /* danger      (red-500) sell / negative */
+  /* ── Background surfaces (luminance stacking) ── */
+  --color-canvas: #08090a; /* page background — deepest */
+  --color-panel: #0f1011; /* sidebar, header, panels */
+  --color-surface: #191a1b; /* modals, dropdowns — elevated, opaque */
+  --color-hover: #28282c; /* hover / active */
+  --color-surface-1: rgba(255, 255, 255, 0.02); /* cards, inputs — translucent */
+  --color-surface-2: rgba(255, 255, 255, 0.04); /* hover overlays — translucent */
+
+  /* ── Text (never pure white) ── */
+  --color-primary: #f7f8f8; /* headlines, prices, tickers */
+  --color-secondary: #d0d6e0; /* body text */
+  --color-muted: #8a8f98; /* labels, metadata */
+  --color-faint: #62666d; /* disabled, subtle */
+
+  /* ── Brand accent — the ONLY chromatic color in chrome ── */
+  --color-accent: #5e6ad2;
+  --color-accent-hover: #7170ff;
+  --color-accent-light: #828fff;
+
+  /* ── Status (verdicts, P&L only) ── */
+  --color-success: #27a644; /* Buy, positive */
+  --color-warning: #eab308; /* Hold, stale */
+  --color-danger: #ef4444; /* Sell, negative */
+
+  /* ── Borders — always semi-transparent white, never solid ── */
+  --color-line-subtle: rgba(255, 255, 255, 0.05);
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.12);
+
+  /* ── Fonts ── */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /*
+   * Aliases so existing markup keeps working. `ink`/`edge` are not font-size
+   * names, so they never collide with Tailwind's built-in utilities.
+   * (`base` is deliberately NOT aliased — `text-base` is a font-size utility.)
+   */
+  --color-ink: #f7f8f8;
+  --color-edge: rgba(255, 255, 255, 0.08);
 }
 
 html {
@@ -22,33 +54,34 @@ html {
 }
 
 body {
-  background-color: var(--color-base);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  /* Inter OpenType features (DESIGN: cv01 + ss03). */
+  font-feature-settings: "cv01", "ss03";
 }
 
-/* Tabular figures for every financial number (DESIGN: Data / Numbers). */
+/*
+ * Tabular figures + monospace for every financial number (DESIGN: Numbers).
+ * Mono here means every .tnum element is JetBrains Mono automatically.
+ */
 .tnum {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* Skeleton shimmer for loading rows (DESIGN: Loading state). */
-@keyframes shimmer {
+/* Skeleton loading — opacity pulse, no decorative gradients. */
+@keyframes skeleton-pulse {
+  0%,
   100% {
-    transform: translateX(100%);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
   }
 }
 .skeleton {
-  position: relative;
-  overflow: hidden;
-  background-color: #283449;
-}
-.skeleton::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.12), transparent);
-  animation: shimmer 1.4s infinite;
+  background-color: var(--color-surface-2);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
 }

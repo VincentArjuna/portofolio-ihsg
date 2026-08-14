@@ -29,11 +29,11 @@ function Card({
   tone?: Tone;
 }) {
   return (
-    <div className="rounded-lg border border-edge bg-surface p-4">
+    <div className="rounded-lg border border-edge bg-surface-1 p-4 transition-colors hover:bg-surface-2">
       <p className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className={`tnum mt-2 text-2xl font-semibold ${toneText[tone]}`}>{value}</p>
+      <p className={`tnum mt-2 text-[28px] font-medium leading-tight tracking-tight ${toneText[tone]}`}>{value}</p>
       {sub && <p className="tnum mt-1 text-xs text-muted">{sub}</p>}
     </div>
   );

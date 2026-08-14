@@ -135,7 +135,7 @@ export default function OpportunitiesPanel() {
               type="checkbox"
               checked={onlyBuy}
               onChange={(e) => setOnlyBuy(e.target.checked)}
-              className="accent-sky-400"
+              className="accent-accent"
             />
             Hanya Beli (ST)
           </label>
@@ -144,14 +144,14 @@ export default function OpportunitiesPanel() {
           type="button"
           onClick={refresh}
           disabled={refreshing}
-          className="rounded-md border border-edge px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-md border border-edge bg-surface-1 px-4 py-2 text-sm font-medium text-secondary transition-colors hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
           {refreshing ? "Memperbarui..." : "Perbarui Peluang"}
         </button>
       </div>
 
       {/* Custom ticker search */}
-      <div className="mb-4 rounded-lg border border-edge bg-surface/40 p-3">
+      <div className="mb-4 rounded-lg border border-edge bg-surface-1 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"
@@ -159,7 +159,7 @@ export default function OpportunitiesPanel() {
             onChange={(e) => setQuery(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && onSearch()}
             placeholder="Cari ticker (mis. BBCA, atau ticker di luar LQ45/Kompas100)"
-            className="tnum w-64 rounded-md border border-edge bg-base px-3 py-1.5 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
+            className="tnum w-64 rounded-md border border-edge bg-surface-1 px-3 py-1.5 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
           />
           <button
             type="button"
@@ -203,7 +203,7 @@ export default function OpportunitiesPanel() {
 
       {/* Ranked opportunities table */}
       {isEmpty ? (
-        <div className="rounded-lg border border-dashed border-edge bg-surface/40 p-12 text-center">
+        <div className="rounded-lg border border-dashed border-edge bg-surface-1 p-12 text-center">
           <p className="text-base text-ink">Belum ada peluang yang ter-score.</p>
           <p className="mt-1 text-sm text-muted">
             Tekan “Perbarui Peluang” untuk memuat data LQ45/Kompas100.
@@ -212,12 +212,12 @@ export default function OpportunitiesPanel() {
       ) : (
         <div className="overflow-x-auto rounded-lg border border-edge">
           <table className="w-full min-w-[960px] border-collapse text-sm">
-            <thead className="bg-surface">
+            <thead className="bg-surface-1">
               <tr>
                 {COLS.map((c) => (
                   <th
                     key={c}
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.05em] text-muted"
                   >
                     {c}
                   </th>
@@ -231,10 +231,10 @@ export default function OpportunitiesPanel() {
                 opps.map((o) => (
                   <tr
                     key={o.ticker}
-                    className="border-t border-edge transition-colors hover:bg-surface/60"
+                    className="border-t border-edge transition-colors hover:bg-surface-2"
                   >
                     <td className="px-4 py-3">
-                      <div className="font-semibold tracking-wide text-ink">
+                      <div className="font-mono text-[14px] font-medium tracking-tight text-ink">
                         {o.ticker}
                       </div>
                       <div className="max-w-[14rem] truncate text-xs text-muted">

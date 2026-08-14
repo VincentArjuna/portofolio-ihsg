@@ -26,7 +26,7 @@ const COLS = [
 function Placeholder({ label = "menunggu data" }: { label?: string }) {
   return (
     <span
-      className="tnum rounded-md bg-base/60 px-2 py-0.5 text-xs text-muted"
+      className="tnum rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted"
       title={label}
     >
       —
@@ -70,12 +70,12 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete, on
   return (
     <div className="overflow-x-auto rounded-lg border border-edge">
       <table className="w-full min-w-[920px] border-collapse text-sm">
-        <thead className="bg-surface">
+        <thead className="bg-surface-1">
           <tr>
             {COLS.map((c) => (
               <th
                 key={c}
-                className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-[0.05em] text-muted"
               >
                 {c}
               </th>
@@ -91,9 +91,9 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete, on
               return (
                 <tr
                   key={p.id}
-                  className="border-t border-edge transition-colors hover:bg-surface/60"
+                  className="border-t border-edge transition-colors hover:bg-surface-2"
                 >
-                  <td className="px-4 py-3 font-semibold tracking-wide text-ink">
+                  <td className="px-4 py-3 font-mono text-[14px] font-medium tracking-tight text-ink">
                     {p.ticker}
                   </td>
                   <td className="tnum px-4 py-3 text-ink">{formatShares(p.shares)}</td>
@@ -103,7 +103,7 @@ export default function HoldingsTable({ positions, loading, onEdit, onDelete, on
                       <span className="tnum w-12 text-muted">
                         {formatPct(p.weight_pct)}
                       </span>
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-base">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-line-subtle">
                         <div
                           className="h-full rounded-full bg-accent"
                           style={{ width: `${Math.min(p.weight_pct, 100)}%` }}

@@ -79,11 +79,11 @@ export default function PositionModal({ open, initial, onClose, onSubmit }: Prop
   };
 
   const field =
-    "w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent";
+    "w-full rounded-md border border-edge bg-surface-1 px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
       onClick={onClose}
     >
       <div
@@ -91,7 +91,7 @@ export default function PositionModal({ open, initial, onClose, onSubmit }: Prop
         aria-modal="true"
         aria-labelledby="modal-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-edge bg-surface p-6 shadow-xl"
+        className="w-full max-w-md rounded-xl border border-edge bg-surface p-6 shadow-xl"
       >
         <h2 id="modal-title" className="text-lg font-semibold text-ink">
           {initial ? "Edit Posisi" : "Tambah Posisi"}
@@ -176,7 +176,7 @@ export default function PositionModal({ open, initial, onClose, onSubmit }: Prop
             <button
               type="submit"
               disabled={busy}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-base transition-colors hover:brightness-110 disabled:opacity-60"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-accent-hover disabled:opacity-60"
             >
               {busy ? "Menyimpan..." : initial ? "Simpan Perubahan" : "Tambah"}
             </button>
