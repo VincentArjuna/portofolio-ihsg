@@ -15,6 +15,12 @@ func testDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("buka db: %v", err)
 	}
+	// Single connection: keeps the :memory: DB as one instance shared with the
+	// auto-analyze goroutine (issue #17) — otherwise the pool opens a 2nd conn
+	// with its own empty :memory: DB and writes vanish.
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
 	if err := db.AutoMigrate(&Position{}, &MarketData{}, &AnalysisResult{}, &AppSettings{}, &Opportunity{}); err != nil {
 		t.Fatalf("migrasi: %v", err)
 	}

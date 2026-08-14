@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -258,8 +259,29 @@ func createPosition(db *gorm.DB) fiber.Handler {
 		if err := db.Create(&p).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "gagal menyimpan posisi"})
 		}
+
+		// Auto-fetch market data + score the new ticker so any IHSG stock
+		// (incl. non-LQ45/Kompas100) gets analyzed without a manual refresh
+		// (issue #17). Non-blocking: the POST returns immediately and a Yahoo
+		// miss or panic never crashes the request or the server.
+		go autoAnalyze(db, ticker)
+
 		return c.Status(201).JSON(p)
 	}
+}
+
+// autoAnalyze fetches market data and scores one ticker in the background. It
+// reuses the shared refresh core, so a fetch/store failure (incl. a Yahoo
+// Finance miss for the ticker) is logged and skipped; a deferred recover keeps
+// an unexpected panic from taking down the server.
+func autoAnalyze(db *gorm.DB, ticker string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("auto-analyze %s: panic: %v", ticker, r)
+		}
+	}()
+	refreshed, failed, _ := refreshTickers(db, []string{ticker})
+	log.Printf("auto-analyze %s: refreshed=%d failed=%d", ticker, refreshed, failed)
 }
 
 // PUT /api/v1/portfolio/:id — partial update of editable fields.

@@ -26,6 +26,7 @@ export default function Page() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Position | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailTicker, setDetailTicker] = useState<string | null>(null);
   const [detailAutoAnalyze, setDetailAutoAnalyze] = useState(false);
@@ -80,9 +81,20 @@ export default function Page() {
   };
 
   const handleSubmit = async (input: PositionInput, id: string | null) => {
+    const creating = !id;
     if (id) await updatePosition(id, input);
     else await createPosition(input);
     await refresh();
+    // On create the backend fetches market data + scores the new ticker in a
+    // background goroutine (issue #17). The modal closes now; reload once more
+    // after a short delay so P&L and verdicts populate without a manual refresh.
+    if (creating) {
+      setFetching(true);
+      setTimeout(async () => {
+        await refresh();
+        setFetching(false);
+      }, 2000);
+    }
   };
 
   const handleDelete = async (p: Position) => {
@@ -184,6 +196,13 @@ export default function Page() {
       {error && (
         <div className="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
           {error}
+        </div>
+      )}
+
+      {/* Auto-fetch banner: a new position's market data is being pulled */}
+      {fetching && (
+        <div className="mb-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm text-accent">
+          Mengambil data pasar untuk saham baru…
         </div>
       )}
 

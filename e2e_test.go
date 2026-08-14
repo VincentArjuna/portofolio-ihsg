@@ -36,9 +36,9 @@ var stubPrices = map[string]float64{
 // ticker gets scored and most land BUY/HOLD.
 func installStubFetcher(t *testing.T) {
 	t.Helper()
-	orig := fetchMarketDataFn
-	t.Cleanup(func() { fetchMarketDataFn = orig })
-	fetchMarketDataFn = func(ticker string) (MarketData, error) {
+	orig := currentFetcher()
+	t.Cleanup(func() { setFetcher(orig) })
+	setFetcher(func(ticker string) (MarketData, error) {
 		price, ok := stubPrices[ticker]
 		if !ok {
 			price = 5000
@@ -50,7 +50,7 @@ func installStubFetcher(t *testing.T) {
 			MA20: price * 0.98, MA50: price * 0.97, MA200: price * 0.95,
 			SourceURL: yahooQuoteURL(ticker),
 		}, nil
-	}
+	})
 }
 
 // --- in-process HTTP helpers ---

@@ -9,6 +9,7 @@ import (
 	"net/http/cookiejar"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -285,7 +286,26 @@ func fetchMarketData(ticker string) (MarketData, error) {
 // fetchMarketDataFn is the market-data fetch seam. It defaults to the real
 // Yahoo fetcher; tests override it with a deterministic stub so the full
 // refresh → score → P&L pipeline can be exercised hermetically (no network).
-var fetchMarketDataFn = fetchMarketData
+//
+// The background auto-analyze goroutine (issue #17) reads it concurrently with
+// test swaps, so reads/writes go through currentFetcher/setFetcher under a
+// RWMutex — a bare global read would race the test cleanup that restores it.
+var (
+	fetchMarketDataMu sync.RWMutex
+	fetchMarketDataFn = fetchMarketData
+)
+
+func currentFetcher() func(string) (MarketData, error) {
+	fetchMarketDataMu.RLock()
+	defer fetchMarketDataMu.RUnlock()
+	return fetchMarketDataFn
+}
+
+func setFetcher(fn func(string) (MarketData, error)) {
+	fetchMarketDataMu.Lock()
+	defer fetchMarketDataMu.Unlock()
+	fetchMarketDataFn = fn
+}
 
 // --- Refresh core (shared by manual handler + background scheduler + T5 universe) ---
 
@@ -295,6 +315,7 @@ var fetchMarketDataFn = fetchMarketData
 // refreshed. Shared by the held-ticker refresh and the opportunity-universe
 // refresh (T5).
 func refreshTickers(db *gorm.DB, tickers []string) (refreshed, failed int, lastUpdate time.Time) {
+	fetch := currentFetcher() // snapshot once; the seam may be swapped by tests
 	seen := make(map[string]struct{}, len(tickers))
 	for _, t := range tickers {
 		if _, dup := seen[t]; dup {
@@ -302,7 +323,7 @@ func refreshTickers(db *gorm.DB, tickers []string) (refreshed, failed int, lastU
 		}
 		seen[t] = struct{}{}
 
-		md, ferr := fetchMarketDataFn(t)
+		md, ferr := fetch(t)
 		if ferr != nil {
 			log.Printf("refresh %s gagal: %v", t, ferr)
 			failed++
